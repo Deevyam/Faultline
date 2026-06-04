@@ -1,0 +1,1575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Faultline — Real-Time PR Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   FAULTLINE DASHBOARD — PREMIUM DARK THEME
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-base: #07070f;
+  --bg-surface: #0d0d1a;
+  --bg-card: rgba(18, 18, 40, 0.65);
+  --bg-card-hover: rgba(24, 24, 54, 0.8);
+  --bg-glass: rgba(20, 20, 45, 0.45);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --accent: #dc2626;
+  --accent-glow: rgba(220, 38, 38, 0.35);
+  --accent-light: #f87171;
+  --green: #22c55e;
+  --green-glow: rgba(34, 197, 94, 0.3);
+  --orange: #f97316;
+  --orange-glow: rgba(249, 115, 22, 0.3);
+  --yellow: #eab308;
+  --yellow-glow: rgba(234, 179, 8, 0.25);
+  --blue: #3b82f6;
+  --blue-glow: rgba(59, 130, 246, 0.25);
+  --purple: #a855f7;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --radius-xs: 5px;
+  --shadow-lg: 0 20px 50px rgba(0,0,0,0.5), 0 0 0 1px var(--border-subtle);
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html { font-size: 15px; }
+body {
+  font-family: var(--font);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Animated background */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 20%, rgba(220, 38, 38, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 90% 80%, rgba(59, 130, 246, 0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 50% 50%, rgba(168, 85, 247, 0.03) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ---- HEADER ---- */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  height: 62px;
+  background: rgba(7, 7, 15, 0.75);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: -0.5px;
+}
+.logo-icon {
+  font-size: 1.5rem;
+  filter: drop-shadow(0 0 8px var(--accent-glow));
+  animation: logoPulse 3s ease-in-out infinite;
+}
+@keyframes logoPulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 6px var(--accent-glow)); }
+  50% { transform: scale(1.08); filter: drop-shadow(0 0 14px var(--accent-glow)); }
+}
+.logo-text { background: linear-gradient(135deg, #fff 0%, var(--accent-light) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.logo-tag {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-left: 2px;
+}
+
+.header-center {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  border-radius: 100px;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--green);
+  transition: var(--transition);
+}
+.status-badge.error {
+  background: rgba(220, 38, 38, 0.1);
+  border-color: rgba(220, 38, 38, 0.2);
+  color: var(--accent-light);
+}
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: statusPulse 2s ease-in-out infinite;
+}
+.status-badge.error .status-dot {
+  background: var(--accent);
+  animation: statusPulseRed 1.5s ease-in-out infinite;
+}
+@keyframes statusPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
+}
+@keyframes statusPulseRed {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(220,38,38,0); }
+}
+
+.timer {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  padding: 5px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  min-width: 82px;
+  text-align: center;
+}
+
+.model-badge {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 14px;
+  border-radius: 100px;
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--purple);
+}
+.model-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--purple);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.mode-toggle {
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-glass);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-family: var(--font);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+.mode-toggle:hover { background: var(--bg-card-hover); color: var(--text-primary); border-color: var(--accent); }
+.mode-toggle.active { background: rgba(220,38,38,0.15); border-color: var(--accent); color: var(--accent-light); }
+
+/* ---- LAYOUT ---- */
+.layout {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 0;
+  min-height: calc(100vh - 62px - 52px);
+}
+
+/* ---- SIDEBAR ---- */
+.sidebar {
+  width: 340px;
+  min-width: 340px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border-right: 1px solid var(--border-subtle);
+  background: rgba(7, 7, 15, 0.5);
+  overflow-y: auto;
+  max-height: calc(100vh - 62px - 52px);
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius);
+  padding: 18px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: var(--transition);
+}
+.card:hover { border-color: rgba(255,255,255,0.1); }
+
+.card-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+/* PR Info */
+.pr-info { }
+.pr-repo {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+.pr-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.35;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+.pr-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.pr-number {
+  color: var(--accent-light);
+  font-weight: 700;
+  font-family: var(--mono);
+}
+.pr-author { color: var(--blue); font-weight: 500; }
+
+/* Progress Ring */
+.progress-ring-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.progress-ring-wrapper {
+  position: relative;
+  width: 130px;
+  height: 130px;
+}
+.progress-ring {
+  transform: rotate(-90deg);
+  width: 130px;
+  height: 130px;
+}
+.progress-ring-bg {
+  fill: none;
+  stroke: rgba(255,255,255,0.05);
+  stroke-width: 8;
+}
+.progress-ring-fill {
+  fill: none;
+  stroke: url(#progressGradient);
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-dasharray: 364;
+  stroke-dashoffset: 364;
+  transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);
+  filter: drop-shadow(0 0 6px var(--accent-glow));
+}
+.progress-ring-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+.progress-ring-pct {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -1px;
+  background: linear-gradient(135deg, #fff, var(--accent-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.progress-ring-sub {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Stat cards */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+.stat-card {
+  background: rgba(14, 14, 30, 0.5);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 14px 10px;
+  text-align: center;
+  transition: var(--transition);
+}
+.stat-card:hover { border-color: rgba(255,255,255,0.1); transform: translateY(-1px); }
+.stat-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin-bottom: 2px;
+}
+.stat-value.files-val { color: var(--blue); }
+.stat-value.findings-val { color: var(--orange); }
+.stat-value.critical-val { color: var(--accent-light); }
+.stat-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+}
+
+/* Model donut */
+.model-chart-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.donut-wrapper {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  flex-shrink: 0;
+}
+.donut-svg {
+  transform: rotate(-90deg);
+  width: 90px;
+  height: 90px;
+}
+.donut-bg {
+  fill: none;
+  stroke: rgba(255,255,255,0.05);
+  stroke-width: 10;
+}
+.donut-llama {
+  fill: none;
+  stroke: var(--orange);
+  stroke-width: 10;
+  stroke-linecap: round;
+  stroke-dasharray: 201;
+  stroke-dashoffset: 201;
+  transition: stroke-dashoffset 1s ease;
+}
+.donut-claude {
+  fill: none;
+  stroke: var(--purple);
+  stroke-width: 10;
+  stroke-linecap: round;
+  stroke-dasharray: 201;
+  stroke-dashoffset: 201;
+  transition: stroke-dashoffset 1s ease;
+}
+.donut-center {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.model-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+.legend-dot {
+  width: 10px; height: 10px;
+  border-radius: 3px;
+}
+.legend-dot.llama { background: var(--orange); }
+.legend-dot.claude { background: var(--purple); }
+.legend-count {
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-left: auto;
+}
+
+/* ---- MAIN CONTENT ---- */
+.main {
+  flex: 1;
+  padding: 20px 24px;
+  overflow-y: auto;
+  max-height: calc(100vh - 62px - 52px);
+}
+
+.main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.main-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.file-counter {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-family: var(--mono);
+}
+
+.file-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* File cards */
+.file-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius);
+  overflow: hidden;
+  animation: slideIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  opacity: 0;
+  transform: translateY(20px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+@keyframes slideIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+.file-card.clean {
+  border-color: rgba(34, 197, 94, 0.15);
+}
+
+.file-card-header {
+  display: flex;
+  align-items: center;
+  padding: 14px 18px;
+  gap: 12px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.file-card-header:hover { background: rgba(255,255,255,0.02); }
+
+.file-lang-icon {
+  font-size: 1.3rem;
+  width: 32px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.file-info { flex: 1; min-width: 0; }
+.file-name {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.file-phase {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.phase-dot {
+  display: inline-block;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--blue);
+  animation: phasePulse 1s ease-in-out infinite;
+}
+.phase-dot.complete { background: var(--green); animation: none; }
+@keyframes phasePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.file-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.file-badge.scanning {
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--blue);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+.file-badge.findings {
+  background: rgba(220, 38, 38, 0.1);
+  color: var(--accent-light);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+}
+.file-badge.clean-badge {
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--green);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.file-expand-icon {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+}
+.file-card.expanded .file-expand-icon { transform: rotate(180deg); }
+
+/* File progress bar */
+.file-progress-bar {
+  height: 2px;
+  background: rgba(255,255,255,0.03);
+  position: relative;
+  overflow: hidden;
+}
+.file-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--blue));
+  width: 0%;
+  transition: width 0.5s ease;
+  position: relative;
+}
+.file-progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 80px; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3));
+  animation: progressShimmer 1.5s ease-in-out infinite;
+}
+@keyframes progressShimmer {
+  0% { opacity: 0; }
+  50% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.file-progress-bar.complete .file-progress-fill {
+  background: var(--green);
+}
+.file-progress-bar.complete .file-progress-fill::after { animation: none; opacity: 0; }
+
+/* Finding cards */
+.file-findings {
+  padding: 0 18px 14px;
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+}
+.file-card.expanded .file-findings { display: flex; }
+
+.finding-card {
+  background: rgba(10, 10, 22, 0.6);
+  border-radius: 10px;
+  padding: 14px;
+  border: 1px solid var(--border-subtle);
+  animation: findingPop 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  opacity: 0;
+  transform: scale(0.97);
+  transition: var(--transition);
+}
+.finding-card:hover { border-color: rgba(255,255,255,0.1); }
+@keyframes findingPop {
+  to { opacity: 1; transform: scale(1); }
+}
+
+.finding-card.critical {
+  border-color: rgba(220, 38, 38, 0.25);
+  box-shadow: inset 0 0 20px rgba(220, 38, 38, 0.05), 0 0 15px rgba(220, 38, 38, 0.05);
+}
+.finding-card.high {
+  border-color: rgba(249, 115, 22, 0.2);
+  box-shadow: inset 0 0 20px rgba(249, 115, 22, 0.04);
+}
+.finding-card.medium {
+  border-color: rgba(234, 179, 8, 0.15);
+  box-shadow: inset 0 0 15px rgba(234, 179, 8, 0.03);
+}
+
+.finding-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.severity-icon { font-size: 0.9rem; }
+.finding-pattern {
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-family: var(--mono);
+}
+.finding-card.critical .finding-pattern { color: var(--accent-light); }
+.finding-card.high .finding-pattern { color: var(--orange); }
+.finding-card.medium .finding-pattern { color: var(--yellow); }
+
+.finding-line {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-left: auto;
+  background: rgba(255,255,255,0.04);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.finding-severity-badge {
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.finding-card.critical .finding-severity-badge {
+  background: rgba(220,38,38,0.15);
+  color: var(--accent-light);
+}
+.finding-card.high .finding-severity-badge {
+  background: rgba(249,115,22,0.12);
+  color: var(--orange);
+}
+.finding-card.medium .finding-severity-badge {
+  background: rgba(234,179,8,0.1);
+  color: var(--yellow);
+}
+
+.finding-scenario {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.finding-fix {
+  background: rgba(34, 197, 94, 0.06);
+  border: 1px solid rgba(34, 197, 94, 0.12);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.finding-fix-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--green);
+  margin-bottom: 5px;
+}
+.finding-fix-code {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ---- BOTTOM BAR ---- */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  height: 52px;
+  background: rgba(7, 7, 15, 0.85);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
+}
+
+.guardrails-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.guardrails-ticker {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  height: 28px;
+}
+.ticker-track {
+  display: flex;
+  gap: 32px;
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ticker-item {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  animation: tickerFadeIn 0.5s ease forwards;
+  opacity: 0;
+}
+@keyframes tickerFadeIn {
+  to { opacity: 1; }
+}
+
+.gateway-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border-radius: 6px;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--blue);
+}
+.gateway-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+/* ---- SCROLLBAR ---- */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+
+/* ---- RESPONSIVE ---- */
+@media (max-width: 1100px) {
+  .sidebar { width: 280px; min-width: 280px; }
+}
+@media (max-width: 850px) {
+  .layout { flex-direction: column; }
+  .sidebar {
+    width: 100%; min-width: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-right: none;
+    border-bottom: 1px solid var(--border-subtle);
+    max-height: none;
+    overflow: visible;
+  }
+  .sidebar .card { flex: 1; min-width: 200px; }
+  .main { max-height: none; }
+  .header-center { display: none; }
+}
+
+/* Splash animation */
+.splash-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--bg-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+  animation: splashFade 0.6s 2s ease forwards;
+}
+@keyframes splashFade {
+  to { opacity: 0; pointer-events: none; }
+}
+.splash-logo {
+  font-size: 3rem;
+  animation: splashPulse 1.5s ease-in-out infinite;
+}
+@keyframes splashPulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px var(--accent-glow)); }
+  50% { transform: scale(1.15); filter: drop-shadow(0 0 30px var(--accent-glow)); }
+}
+.splash-text {
+  font-size: 1.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #fff 0%, var(--accent-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
+}
+.splash-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+</style>
+</head>
+<body>
+
+<!-- Splash -->
+<div class="splash-overlay" id="splash">
+  <div class="splash-logo">⚡</div>
+  <div class="splash-text">Faultline</div>
+  <div class="splash-sub">Initializing Analysis Engine</div>
+</div>
+
+<!-- Header -->
+<header class="header">
+  <div class="logo">
+    <span class="logo-icon">⚡</span>
+    <span class="logo-text">Faultline</span>
+    <span class="logo-tag">PR Reviewer</span>
+  </div>
+  <div class="header-center">
+    <div class="status-badge" id="statusBadge">
+      <span class="status-dot"></span>
+      <span id="statusText">Analyzing</span>
+    </div>
+    <div class="timer" id="timer">00:00</div>
+    <div class="model-badge" id="modelBadge">
+      <span class="model-dot"></span>
+      <span id="modelText">Llama 8B</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="mode-toggle active" id="demoBtn" onclick="startDemo()">▶ Demo</button>
+    <button class="mode-toggle" id="liveBtn" onclick="switchToLive()">◉ Live</button>
+  </div>
+</header>
+
+<!-- Layout -->
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <!-- PR Info -->
+    <div class="card pr-info">
+      <div class="card-label">Pull Request</div>
+      <div class="pr-repo" id="prRepo">acme-corp/payments-service</div>
+      <div class="pr-title" id="prTitle">feat: add Stripe retry logic & connection pooling</div>
+      <div class="pr-meta">
+        <span class="pr-number" id="prNumber">#847</span>
+        <span>•</span>
+        <span class="pr-author" id="prAuthor">@sarah-chen</span>
+        <span>•</span>
+        <span id="prFiles">8 files changed</span>
+      </div>
+    </div>
+
+    <!-- Progress Ring -->
+    <div class="card">
+      <div class="card-label">Analysis Progress</div>
+      <div class="progress-ring-container">
+        <div class="progress-ring-wrapper">
+          <svg class="progress-ring" viewBox="0 0 130 130">
+            <defs>
+              <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#dc2626" />
+                <stop offset="100%" stop-color="#3b82f6" />
+              </linearGradient>
+            </defs>
+            <circle class="progress-ring-bg" cx="65" cy="65" r="58" />
+            <circle class="progress-ring-fill" id="progressRing" cx="65" cy="65" r="58" />
+          </svg>
+          <div class="progress-ring-text">
+            <div class="progress-ring-pct" id="progressPct">0%</div>
+            <div class="progress-ring-sub" id="progressSub">files</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="card">
+      <div class="card-label">Summary</div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value files-val" id="statFiles">0</div>
+          <div class="stat-label">Files</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value findings-val" id="statFindings">0</div>
+          <div class="stat-label">Findings</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value critical-val" id="statCritical">0</div>
+          <div class="stat-label">Critical</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Model Usage -->
+    <div class="card">
+      <div class="card-label">Model Usage</div>
+      <div class="model-chart-container">
+        <div class="donut-wrapper">
+          <svg class="donut-svg" viewBox="0 0 90 90">
+            <circle class="donut-bg" cx="45" cy="45" r="32" />
+            <circle class="donut-llama" id="donutLlama" cx="45" cy="45" r="32" />
+            <circle class="donut-claude" id="donutClaude" cx="45" cy="45" r="32" />
+          </svg>
+          <div class="donut-center" id="donutCenter">0</div>
+        </div>
+        <div class="model-legend">
+          <div class="legend-item">
+            <span class="legend-dot llama"></span>
+            <span>Llama 8B</span>
+            <span class="legend-count" id="llamaCount">0</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot claude"></span>
+            <span>Claude 3.7</span>
+            <span class="legend-count" id="claudeCount">0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main" id="mainContent">
+    <div class="main-header">
+      <div class="main-title">File Analysis Feed</div>
+      <div class="file-counter" id="fileCounter">0 / 8 files</div>
+    </div>
+    <div class="file-feed" id="fileFeed">
+      <!-- File cards will be injected here -->
+    </div>
+  </main>
+</div>
+
+<!-- Bottom bar -->
+<div class="bottom-bar">
+  <div class="guardrails-label">🛡️ Guardrails</div>
+  <div class="guardrails-ticker" id="guardrailsTicker">
+    <div class="ticker-track" id="tickerTrack"></div>
+  </div>
+  <div class="gateway-status">
+    <span class="gateway-dot"></span>
+    <span id="gatewayText">AI Gateway — Portkey Active</span>
+  </div>
+</div>
+
+<script>
+/* =================================================================
+   FAULTLINE DASHBOARD — ENGINE
+   ================================================================= */
+
+// ---- STATE ----
+const state = {
+  mode: 'demo', // 'demo' | 'live'
+  running: false,
+  startTime: null,
+  timerInterval: null,
+  filesAnalyzed: 0,
+  totalFiles: 8,
+  totalFindings: 0,
+  criticalCount: 0,
+  llamaCalls: 0,
+  claudeCalls: 0,
+  currentFileIndex: 0,
+  guardrailEvents: [],
+};
+
+// ---- DEMO DATA ----
+const DEMO_PR = {
+  repo: 'acme-corp/payments-service',
+  number: '#847',
+  title: 'feat: add Stripe retry logic & connection pooling',
+  author: '@sarah-chen',
+  files: 8,
+};
+
+const LANG_ICONS = {
+  py: '🐍',
+  ts: '📜',
+  js: '📜',
+  java: '☕',
+  rs: '🦀',
+  go: '💎',
+};
+
+function getLangIcon(filename) {
+  const ext = filename.split('.').pop();
+  return LANG_ICONS[ext] || '📄';
+}
+
+const DEMO_FILES = [
+  {
+    name: 'src/payments/charge.py',
+    delay: 2200,
+    phase1Time: 1200,
+    phase2Time: 1800,
+    model: 'Llama 8B',
+    modelPhase2: 'Claude 3.7',
+    findings: [
+      {
+        pattern: 'MISSING_TIMEOUT',
+        severity: 'critical',
+        line: 47,
+        scenario: 'The requests.post() call to the Stripe API on line 47 has no timeout parameter. Under network degradation, this will block the payment worker thread indefinitely, causing a cascading thread pool exhaustion across all payment processing.',
+        fix: "response = requests.post(\n  stripe_url,\n  json=payload,\n  timeout=(3.05, 10)  # connect, read\n)",
+      },
+      {
+        pattern: 'NON_IDEMPOTENT',
+        severity: 'critical',
+        line: 63,
+        scenario: 'INSERT INTO charges without an idempotency key. If the Stripe webhook retries (which it will), duplicate charges will be created for the same payment intent, resulting in customers being double-charged.',
+        fix: "db.execute(\n  \"INSERT INTO charges (user_id, amount, idempotency_key) \"\n  \"VALUES (%s, %s, %s) \"\n  \"ON CONFLICT (idempotency_key) DO NOTHING\",\n  user_id, amount, payment_intent_id\n)",
+      },
+    ],
+  },
+  {
+    name: 'src/api/handlers.ts',
+    delay: 2800,
+    phase1Time: 1000,
+    phase2Time: 1600,
+    model: 'Llama 8B',
+    modelPhase2: 'Claude 3.7',
+    findings: [
+      {
+        pattern: 'SILENT_EXCEPTION',
+        severity: 'high',
+        line: 112,
+        scenario: 'The catch block on line 112 catches the payment processing error but only logs to console.debug(). In production, this means failed payment notifications will silently disappear with no alerting, no retry, and no audit trail.',
+        fix: "try {\n  await processPaymentNotification(event);\n} catch (err) {\n  logger.error('Payment notification failed', {\n    error: err,\n    eventId: event.id,\n    customerId: event.customer_id\n  });\n  metrics.increment('payment.notification.failure');\n  throw err; // propagate for retry\n}",
+      },
+    ],
+  },
+  {
+    name: 'src/db/connection.py',
+    delay: 2500,
+    phase1Time: 900,
+    phase2Time: 1400,
+    model: 'Llama 8B',
+    modelPhase2: 'Claude 3.7',
+    findings: [
+      {
+        pattern: 'UNBOUNDED_POOL',
+        severity: 'high',
+        line: 23,
+        scenario: 'create_engine() called with no pool_size or max_overflow constraints. Under traffic spikes, SQLAlchemy will open unlimited database connections until the PostgreSQL server hits max_connections and starts refusing all connections service-wide.',
+        fix: "engine = create_engine(\n  DATABASE_URL,\n  pool_size=10,\n  max_overflow=5,\n  pool_timeout=30,\n  pool_pre_ping=True\n)",
+      },
+    ],
+  },
+  {
+    name: 'src/services/email.py',
+    delay: 2100,
+    phase1Time: 1100,
+    phase2Time: 1500,
+    model: 'Llama 8B',
+    modelPhase2: null,
+    findings: [
+      {
+        pattern: 'MISSING_RETRY',
+        severity: 'high',
+        line: 38,
+        scenario: 'SendGrid API call on line 38 has no retry logic. Transient 503 errors from SendGrid (which occur during their deployments ~2x/week) will cause permanent email delivery failures for password resets and order confirmations.',
+        fix: "@retry(\n  stop=stop_after_attempt(3),\n  wait=wait_exponential(multiplier=1, max=10),\n  retry=retry_if_exception_type(\n    (ConnectionError, TimeoutError)\n  )\n)\ndef send_email(to, subject, body):\n    return sg.send(message)",
+      },
+    ],
+  },
+  {
+    name: 'src/integrations/stripe.ts',
+    delay: 3000,
+    phase1Time: 1300,
+    phase2Time: 2000,
+    model: 'Llama 8B',
+    modelPhase2: 'Claude 3.7',
+    findings: [
+      {
+        pattern: 'RATE_LIMIT_UNHANDLED',
+        severity: 'high',
+        line: 91,
+        scenario: 'stripe.charges.create() has no 429 rate limit handling. During peak checkout (Black Friday), when Stripe rate-limits this service, every subsequent payment attempt will fail immediately rather than backing off and retrying.',
+        fix: "async function createCharge(params) {\n  return retry(\n    () => stripe.charges.create(params),\n    {\n      retries: 3,\n      onRetry: (err) => {\n        if (err.statusCode === 429) {\n          const delay = err.headers['retry-after'] || 2;\n          return delay * 1000;\n        }\n      }\n    }\n  );\n}",
+      },
+    ],
+  },
+  {
+    name: 'src/api/dashboard.ts',
+    delay: 1800,
+    phase1Time: 900,
+    phase2Time: 800,
+    model: 'Llama 8B',
+    modelPhase2: null,
+    findings: [],
+  },
+  {
+    name: 'src/workers/queue.py',
+    delay: 2600,
+    phase1Time: 1100,
+    phase2Time: 1700,
+    model: 'Llama 8B',
+    modelPhase2: 'Claude 3.7',
+    findings: [
+      {
+        pattern: 'NO_DEAD_LETTER',
+        severity: 'medium',
+        line: 55,
+        scenario: 'Queue consumer processes messages without a dead letter queue. If a malformed payment event enters the queue, process_message() will throw on JSON parsing, the message will be re-delivered, and this cycle will repeat forever — blocking all subsequent messages.',
+        fix: "def process_message(msg):\n    try:\n        data = json.loads(msg.body)\n        handle_payment(data)\n        msg.delete()\n    except Exception as e:\n        if msg.approximate_receive_count > 3:\n            dlq.send_message(MessageBody=msg.body)\n            msg.delete()\n            logger.error(f'Moved to DLQ: {e}')\n        else:\n            raise  # allow SQS retry",
+      },
+    ],
+  },
+  {
+    name: 'src/api/gateway.ts',
+    delay: 2400,
+    phase1Time: 1000,
+    phase2Time: 1500,
+    model: 'Llama 8B',
+    modelPhase2: 'Claude 3.7',
+    findings: [
+      {
+        pattern: 'CASCADE_UNGUARDED',
+        severity: 'medium',
+        line: 29,
+        scenario: 'Sequential calls to userService.get(), orderService.list(), and paymentService.status() with no circuit breaker. If the payment service goes down, the gateway endpoint will hang on every request, cascading the failure to all API consumers.',
+        fix: "const user = await circuitBreaker.fire(\n  () => userService.get(id),\n  { fallback: cachedUser }\n);\nconst orders = await circuitBreaker.fire(\n  () => orderService.list(user.id),\n  { fallback: [] }\n);",
+      },
+    ],
+  },
+];
+
+const GUARDRAIL_EVENTS = [
+  { icon: '🛡️', text: 'Secret redacted: AWS Access Key detected in payments/charge.py', delay: 3000 },
+  { icon: '✅', text: 'Code fix validated: syntax check passed for charge.py suggestion', delay: 6000 },
+  { icon: '🛡️', text: 'PII redacted: email address in handlers.ts error log', delay: 9000 },
+  { icon: '✅', text: 'Fix validated: import statement resolved for retry decorator', delay: 12000 },
+  { icon: '🔄', text: 'Model fallback: Claude 3.7 → Llama 70B (rate limit hit)', delay: 15000 },
+  { icon: '🛡️', text: 'Secret redacted: Stripe secret key in stripe.ts', delay: 17000 },
+  { icon: '✅', text: 'Code fix validated: connection pool params type-checked', delay: 19000 },
+  { icon: '🛡️', text: 'Injection blocked: potential prompt injection in PR description', delay: 21000 },
+  { icon: '✅', text: 'Fix validated: DLQ handler exception hierarchy correct', delay: 23000 },
+  { icon: '✅', text: 'Analysis complete: 8 findings across 7 files, 2 critical', delay: 25000 },
+];
+
+// ---- DOM REFS ----
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+// ---- TIMER ----
+function startTimer() {
+  state.startTime = Date.now();
+  state.timerInterval = setInterval(() => {
+    const elapsed = Date.now() - state.startTime;
+    const s = Math.floor(elapsed / 1000);
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    $('#timer').textContent = `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  }, 200);
+}
+
+function stopTimer() {
+  clearInterval(state.timerInterval);
+}
+
+// ---- PROGRESS ----
+function updateProgress() {
+  const pct = Math.round((state.filesAnalyzed / state.totalFiles) * 100);
+  const circumference = 2 * Math.PI * 58; // r=58
+  const offset = circumference - (pct / 100) * circumference;
+  $('#progressRing').style.strokeDashoffset = offset;
+  $('#progressPct').textContent = pct + '%';
+  $('#progressSub').textContent = `${state.filesAnalyzed}/${state.totalFiles} files`;
+  $('#fileCounter').textContent = `${state.filesAnalyzed} / ${state.totalFiles} files`;
+}
+
+function updateStats() {
+  $('#statFiles').textContent = state.filesAnalyzed;
+  $('#statFindings').textContent = state.totalFindings;
+  $('#statCritical').textContent = state.criticalCount;
+}
+
+function updateModelChart() {
+  const total = state.llamaCalls + state.claudeCalls;
+  const circumference = 2 * Math.PI * 32; // r=32
+  if (total === 0) return;
+
+  const llamaPct = state.llamaCalls / total;
+  const claudePct = state.claudeCalls / total;
+
+  const llamaOffset = circumference - (llamaPct * circumference);
+  const claudeLen = claudePct * circumference;
+  const claudeOffset = circumference - claudeLen;
+
+  $('#donutLlama').style.strokeDashoffset = llamaOffset;
+  // Rotate Claude segment to start after Llama
+  $('#donutClaude').style.strokeDashoffset = claudeOffset;
+  $('#donutClaude').style.strokeDasharray = `${claudeLen} ${circumference - claudeLen}`;
+  // Offset the Claude start by llama's arc
+  const llamaLen = llamaPct * circumference;
+  $('#donutClaude').style.strokeDasharray = `${claudeLen} ${circumference}`;
+  // Use transform to rotate Claude start
+  const llamaDeg = llamaPct * 360;
+  $('#donutClaude').style.transform = `rotate(${llamaDeg - 90}deg)`;
+  $('#donutClaude').style.transformOrigin = '45px 45px';
+
+  // Re-fix Llama
+  $('#donutLlama').style.strokeDasharray = `${llamaLen} ${circumference}`;
+  $('#donutLlama').style.transform = `rotate(-90deg)`;
+  $('#donutLlama').style.transformOrigin = '45px 45px';
+
+  $('#donutCenter').textContent = total;
+  $('#llamaCount').textContent = state.llamaCalls;
+  $('#claudeCount').textContent = state.claudeCalls;
+}
+
+// ---- FILE CARD BUILDER ----
+function createFileCard(fileData, index) {
+  const card = document.createElement('div');
+  card.className = 'file-card';
+  card.id = `file-${index}`;
+  card.style.animationDelay = `${index * 0.05}s`;
+
+  const icon = getLangIcon(fileData.name);
+  const hasFindings = fileData.findings && fileData.findings.length > 0;
+
+  card.innerHTML = `
+    <div class="file-card-header" onclick="toggleFile(${index})">
+      <span class="file-lang-icon">${icon}</span>
+      <div class="file-info">
+        <div class="file-name">${fileData.name}</div>
+        <div class="file-phase" id="phase-${index}">
+          <span class="phase-dot" id="phaseDot-${index}"></span>
+          <span id="phaseText-${index}">Queued</span>
+        </div>
+      </div>
+      <div class="file-badge scanning" id="badge-${index}">
+        <span>⏳ Queued</span>
+      </div>
+      <span class="file-expand-icon" id="expandIcon-${index}">▼</span>
+    </div>
+    <div class="file-progress-bar" id="progressBar-${index}">
+      <div class="file-progress-fill" id="progressFill-${index}"></div>
+    </div>
+    <div class="file-findings" id="findings-${index}"></div>
+  `;
+
+  return card;
+}
+
+function toggleFile(index) {
+  const card = $(`#file-${index}`);
+  if (card) card.classList.toggle('expanded');
+}
+
+// ---- FINDING CARD BUILDER ----
+function createFindingCard(finding) {
+  const severityIcons = { critical: '🔴', high: '🟠', medium: '🟡' };
+  const card = document.createElement('div');
+  card.className = `finding-card ${finding.severity}`;
+
+  card.innerHTML = `
+    <div class="finding-header">
+      <span class="severity-icon">${severityIcons[finding.severity]}</span>
+      <span class="finding-pattern">${finding.pattern}</span>
+      <span class="finding-severity-badge">${finding.severity}</span>
+      <span class="finding-line">Line ${finding.line}</span>
+    </div>
+    <div class="finding-scenario">${finding.scenario}</div>
+    <div class="finding-fix">
+      <div class="finding-fix-label">Suggested Fix</div>
+      <pre class="finding-fix-code">${escapeHtml(finding.fix)}</pre>
+    </div>
+  `;
+
+  return card;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ---- GUARDRAILS TICKER ----
+function addTickerEvent(icon, text) {
+  const track = $('#tickerTrack');
+  const item = document.createElement('div');
+  item.className = 'ticker-item';
+  item.innerHTML = `${icon} ${text}`;
+
+  // Insert at beginning for newest-first
+  track.insertBefore(item, track.firstChild);
+
+  // Keep only last 6
+  while (track.children.length > 6) {
+    track.removeChild(track.lastChild);
+  }
+}
+
+// ---- DEMO ENGINE ----
+async function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function animateFileAnalysis(fileData, index) {
+  const phaseText = $(`#phaseText-${index}`);
+  const phaseDot = $(`#phaseDot-${index}`);
+  const badge = $(`#badge-${index}`);
+  const progressFill = $(`#progressFill-${index}`);
+  const progressBar = $(`#progressBar-${index}`);
+  const findingsContainer = $(`#findings-${index}`);
+  const card = $(`#file-${index}`);
+
+  // Phase 1: Fast scan
+  phaseText.textContent = 'Phase 1 — Fast scanning with ' + fileData.model + '...';
+  badge.innerHTML = '<span>🔍 Scanning</span>';
+  badge.className = 'file-badge scanning';
+  $('#modelText').textContent = fileData.model;
+
+  state.llamaCalls++;
+  updateModelChart();
+
+  // Animate progress 0→50%
+  let progress = 0;
+  const p1Step = 50 / (fileData.phase1Time / 50);
+  const p1Interval = setInterval(() => {
+    progress = Math.min(progress + p1Step, 50);
+    progressFill.style.width = progress + '%';
+  }, 50);
+
+  await sleep(fileData.phase1Time);
+  clearInterval(p1Interval);
+  progressFill.style.width = '50%';
+
+  // Phase 2: Deep reasoning
+  if (fileData.modelPhase2) {
+    phaseText.textContent = 'Phase 2 — Deep reasoning with ' + fileData.modelPhase2 + '...';
+    $('#modelText').textContent = fileData.modelPhase2;
+    state.claudeCalls++;
+    updateModelChart();
+  } else {
+    phaseText.textContent = 'Phase 2 — Validating results...';
+  }
+
+  const p2Step = 50 / (fileData.phase2Time / 50);
+  const p2Interval = setInterval(() => {
+    progress = Math.min(progress + p2Step, 100);
+    progressFill.style.width = progress + '%';
+  }, 50);
+
+  await sleep(fileData.phase2Time);
+  clearInterval(p2Interval);
+  progressFill.style.width = '100%';
+
+  // Complete
+  progressBar.classList.add('complete');
+  phaseDot.classList.add('complete');
+
+  const hasFindings = fileData.findings.length > 0;
+
+  if (hasFindings) {
+    phaseText.textContent = `Complete — ${fileData.findings.length} finding${fileData.findings.length > 1 ? 's' : ''}`;
+    badge.innerHTML = `<span>⚠️ ${fileData.findings.length} finding${fileData.findings.length > 1 ? 's' : ''}</span>`;
+    badge.className = 'file-badge findings';
+
+    // Add finding cards with staggered animation
+    card.classList.add('expanded');
+    for (let i = 0; i < fileData.findings.length; i++) {
+      await sleep(300);
+      const findingCard = createFindingCard(fileData.findings[i]);
+      findingCard.style.animationDelay = `${i * 0.1}s`;
+      findingsContainer.appendChild(findingCard);
+
+      state.totalFindings++;
+      if (fileData.findings[i].severity === 'critical') state.criticalCount++;
+      updateStats();
+    }
+  } else {
+    phaseText.textContent = 'Complete — No issues found';
+    badge.innerHTML = '<span>✅ Clean</span>';
+    badge.className = 'file-badge clean-badge';
+    card.classList.add('clean');
+  }
+
+  state.filesAnalyzed++;
+  updateProgress();
+  updateStats();
+
+  // Scroll to keep latest visible
+  const mainEl = $('#mainContent');
+  mainEl.scrollTo({ top: mainEl.scrollHeight, behavior: 'smooth' });
+}
+
+async function runDemo() {
+  if (state.running) return;
+  state.running = true;
+
+  // Reset state
+  state.filesAnalyzed = 0;
+  state.totalFindings = 0;
+  state.criticalCount = 0;
+  state.llamaCalls = 0;
+  state.claudeCalls = 0;
+  state.currentFileIndex = 0;
+
+  // Reset UI
+  $('#fileFeed').innerHTML = '';
+  $('#tickerTrack').innerHTML = '';
+  updateProgress();
+  updateStats();
+  updateModelChart();
+
+  // Set status
+  $('#statusBadge').className = 'status-badge';
+  $('#statusText').textContent = 'Analyzing';
+
+  startTimer();
+
+  // Schedule guardrail events
+  GUARDRAIL_EVENTS.forEach(evt => {
+    setTimeout(() => {
+      if (state.running) addTickerEvent(evt.icon, evt.text);
+    }, evt.delay);
+  });
+
+  // Simulate model fallback event at file 5
+  setTimeout(() => {
+    if (state.running) {
+      $('#statusBadge').className = 'status-badge error';
+      $('#statusText').textContent = 'Rate Limited';
+      setTimeout(() => {
+        if (state.running) {
+          $('#statusBadge').className = 'status-badge';
+          $('#statusText').textContent = 'Analyzing';
+        }
+      }, 3000);
+    }
+  }, 13000);
+
+  // Process files sequentially
+  for (let i = 0; i < DEMO_FILES.length; i++) {
+    if (!state.running) break;
+
+    const fileData = DEMO_FILES[i];
+    const card = createFileCard(fileData, i);
+    $('#fileFeed').appendChild(card);
+
+    await sleep(400); // breathing room after card appears
+    await animateFileAnalysis(fileData, i);
+    await sleep(fileData.delay - fileData.phase1Time - fileData.phase2Time);
+  }
+
+  // Analysis complete
+  stopTimer();
+  $('#statusBadge').className = 'status-badge';
+  $('#statusText').textContent = 'Complete';
+  $('#modelText').textContent = 'Idle';
+  state.running = false;
+
+  // Flash the progress ring green
+  $('#progressRing').style.stroke = '#22c55e';
+}
+
+function startDemo() {
+  $('#demoBtn').classList.add('active');
+  $('#liveBtn').classList.remove('active');
+  state.mode = 'demo';
+  stopTimer();
+  state.running = false;
+  setTimeout(() => runDemo(), 100);
+}
+
+function switchToLive() {
+  $('#liveBtn').classList.add('active');
+  $('#demoBtn').classList.remove('active');
+  state.mode = 'live';
+  stopTimer();
+  state.running = false;
+
+  $('#fileFeed').innerHTML = `
+    <div style="text-align:center;padding:60px 20px;color:var(--text-muted);">
+      <div style="font-size:2.5rem;margin-bottom:12px;">📡</div>
+      <div style="font-size:1rem;font-weight:600;margin-bottom:6px;color:var(--text-secondary);">Live Mode</div>
+      <div style="font-size:0.82rem;line-height:1.6;">
+        Waiting for webhook events...<br>
+        <span style="font-family:var(--mono);font-size:0.75rem;color:var(--text-muted);">
+          GET /api/analysis/status
+        </span>
+      </div>
+    </div>
+  `;
+
+  $('#statusText').textContent = 'Waiting';
+  $('#timer').textContent = '--:--';
+
+  // TODO: Implement SSE/polling connection
+  // connectLiveStream();
+}
+
+// async function connectLiveStream() {
+//   try {
+//     const res = await fetch('/api/analysis/status');
+//     const data = await res.json();
+//     // Update dashboard with live data
+//   } catch (err) {
+//     console.log('Live mode: server not available, staying in standby');
+//   }
+// }
+
+// ---- INIT ----
+window.addEventListener('load', () => {
+  // Remove splash after animation
+  setTimeout(() => {
+    const splash = $('#splash');
+    if (splash) splash.remove();
+  }, 2700);
+
+  // Start demo mode by default
+  setTimeout(() => {
+    runDemo();
+  }, 2800);
+});
+</script>
+</body>
+</html>

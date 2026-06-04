@@ -1,5 +1,6 @@
 import express from 'express';
 import crypto from 'crypto';
+import path from 'path';
 import dotenv from 'dotenv';
 import { handlePullRequest } from '../agent';
 import { logger } from '../utils/logger';
@@ -13,6 +14,14 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
 // Raw body for webhook signature verification
 app.use('/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
+
+// ---- Dashboard ----
+const dashboardDir = path.join(__dirname, '..', 'dashboard');
+app.use('/dashboard/assets', express.static(dashboardDir));
+
+app.get('/dashboard', (_req, res) => {
+  res.sendFile(path.join(dashboardDir, 'index.html'));
+});
 
 // Health check
 app.get('/health', (_req, res) => {
@@ -113,6 +122,7 @@ app.post('/webhook', async (req, res) => {
 app.listen(PORT, () => {
   logger.info(`Faultline webhook server running on port ${PORT}`);
   logger.info(`Health: http://localhost:${PORT}/health`);
+  logger.info(`Dashboard: http://localhost:${PORT}/dashboard`);
   logger.info(`Webhook: POST http://localhost:${PORT}/webhook`);
 });
 
