@@ -1,0 +1,52 @@
+name: Faultline Resilience Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  faultline:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Run Faultline Analysis
+        env:
+          TRUEFOUNDRY_GATEWAY_URL: ${{ secrets.TRUEFOUNDRY_GATEWAY_URL }}
+          TRUEFOUNDRY_API_KEY: ${{ secrets.TRUEFOUNDRY_API_KEY }}
+          TRUEFOUNDRY_MCP_GATEWAY_URL: ${{ secrets.TRUEFOUNDRY_MCP_GATEWAY_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_ALERT_CHANNEL: ${{ secrets.SLACK_ALERT_CHANNEL }}
+          S3_CHECKPOINT_BUCKET: ${{ secrets.S3_CHECKPOINT_BUCKET }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_REPO: ${{ github.repository }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node dist/cli.js --pr ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --sha ${{ github.event.pull_request.head.sha }}
+
+      - name: Check for Critical Findings
+        if: failure()
+        run: |
+          echo "::error::Faultline found critical resilience issues. Check PR comments for details."
+          exit 1

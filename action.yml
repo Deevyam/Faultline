@@ -1,0 +1,44 @@
+name: 'Faultline Resilience Review'
+description: 'Automated resilience-first PR review — finds silent failures before they cause production outages'
+author: 'Faultline Team'
+branding:
+  icon: 'shield'
+  color: 'red'
+
+inputs:
+  truefoundry-gateway-url:
+    description: 'TrueFoundry AI Gateway URL'
+    required: true
+  truefoundry-api-key:
+    description: 'TrueFoundry API key'
+    required: true
+  truefoundry-mcp-url:
+    description: 'TrueFoundry MCP Gateway URL'
+    required: false
+  github-token:
+    description: 'GitHub token for PR access'
+    required: true
+    default: ${{ github.token }}
+  jira-base-url:
+    description: 'Jira base URL'
+    required: false
+  jira-token:
+    description: 'Jira API token'
+    required: false
+  slack-token:
+    description: 'Slack bot token for critical alerts'
+    required: false
+  slack-channel:
+    description: 'Slack channel for alerts'
+    required: false
+  s3-bucket:
+    description: 'S3 bucket for state checkpoints'
+    required: false
+  fail-on-critical:
+    description: 'Fail the action if critical findings are found'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'node20'
+  main: 'dist/action.js'

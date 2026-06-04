@@ -1,0 +1,62 @@
+# Faultline AI Gateway Configuration
+# TrueFoundry AI Gateway routing + fallback chain
+name: faultline-gateway
+
+providers:
+  - name: bedrock-claude
+    provider: bedrock
+    model: anthropic.claude-3-7-sonnet-20250219-v1:0
+    region: us-east-1
+
+  - name: bedrock-llama-70b
+    provider: bedrock
+    model: meta.llama3-70b-instruct-v1:0
+    region: us-east-1
+
+  - name: bedrock-llama-8b
+    provider: bedrock
+    model: meta.llama3-8b-instruct-v1:0
+    region: us-east-1
+
+virtual_keys:
+  # Phase 2: deep reasoning — Claude with full fallback chain
+  - name: phase2-reasoning
+    targets:
+      - provider: bedrock-claude
+        weight: 100
+      - provider: bedrock-llama-70b  # fallback if Claude rate-limited
+        weight: 100
+    retry:
+      attempts: 3
+      on_status_codes: [429, 503, 500]
+      backoff: exponential
+    timeout_ms: 30000
+
+  # Phase 1: fast pattern scan — Llama 8B (cheap, fast)
+  - name: phase1-scan
+    targets:
+      - provider: bedrock-llama-8b
+        weight: 100
+    retry:
+      attempts: 2
+      on_status_codes: [429, 503]
+    timeout_ms: 10000
+
+guardrails:
+  input:
+    - type: pii_detection
+      action: redact
+    - type: secret_detection
+      action: block
+      patterns:
+        - AWS_SECRET_ACCESS_KEY
+        - GITHUB_TOKEN
+        - "sk-[a-zA-Z0-9]{32,}"
+  output:
+    - type: pii_detection
+      action: redact
+
+observability:
+  log_requests: true
+  log_responses: true
+  metadata_tags: [pr_number, repo, phase, file_path]

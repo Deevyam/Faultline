@@ -1,0 +1,42 @@
+# Faultline MCP Gateway Configuration
+# TrueFoundry MCP Gateway server registrations
+servers:
+  - name: github
+    transport: http
+    url: https://api.githubcopilot.com/mcp/
+    auth:
+      type: bearer
+      token: ${GITHUB_APP_INSTALLATION_TOKEN}
+    allowed_tools:
+      - get_pull_request
+      - get_pull_request_files
+      - get_file_contents
+      - create_pull_request_review
+      - create_review_comment
+    denied_tools:
+      - delete_repository
+      - push_files
+      - create_branch
+
+  - name: jira
+    transport: http
+    url: https://mcp.atlassian.com/
+    auth:
+      type: basic
+      username: ${JIRA_EMAIL}
+      password: ${JIRA_API_TOKEN}
+    allowed_tools:
+      - get_issue
+      - search_issues
+
+  - name: slack
+    transport: http
+    url: https://mcp.slack.com/
+    auth:
+      type: bearer
+      token: ${SLACK_BOT_TOKEN}
+    allowed_tools:
+      - post_message
+    tool_constraints:
+      post_message:
+        allowed_channels: ["${SLACK_ALERT_CHANNEL}"]
