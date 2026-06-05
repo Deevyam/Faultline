@@ -1,5 +1,7 @@
 node_modules/
 dist/
+!src/dashboard/dist/
+src/dashboard/dist/.vite/
 .env
 *.log
 coverage/

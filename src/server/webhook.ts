@@ -16,8 +16,11 @@ app.use('/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
 // ---- Dashboard ----
-const dashboardDir = path.join(__dirname, '..', 'dashboard');
-app.use('/dashboard/assets', express.static(dashboardDir));
+// In dev (ts-node): __dirname = src/server → resolve to src/dashboard/dist
+// In prod (compiled): __dirname = dist/server → resolve to src/dashboard/dist via project root
+const projectRoot = path.resolve(__dirname, '..', '..');
+const dashboardDir = path.join(projectRoot, 'src', 'dashboard', 'dist');
+app.use('/dashboard', express.static(dashboardDir));
 
 app.get('/dashboard', (_req, res) => {
   res.sendFile(path.join(dashboardDir, 'index.html'));
