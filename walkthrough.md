@@ -10,13 +10,13 @@
 
 | Metric | Value |
 |--------|-------|
-| Source files | 27 files |
-| Total source code | 166 KB |
-| TypeScript compilation | ✅ Zero errors |
+| Source files | 38 files |
+| Total source code | 230+ KB |
+| TypeScript compilation | ✅ Zero errors (main + dashboard) |
 | Unit tests | **209 passing** across 6 suites |
 | Test coverage areas | Guardrails, detectors, state persistence, MCP |
-| Dashboard | 45 KB single-file real-time UI |
-| Git commits | 2 clean commits |
+| Dashboard | React + Three.js 3D spatial UI (8 source files) |
+| Git commits | 3 clean commits |
 
 ---
 
@@ -124,10 +124,17 @@ graph TB
 | [checkpoint.test.ts](file:///c:/Users/deevy/OneDrive/Desktop/keys/Fault/src/state/checkpoint.test.ts) | 12 | State persistence: save/load/delete with local filesystem |
 | [jira.test.ts](file:///c:/Users/deevy/OneDrive/Desktop/keys/Fault/src/mcp/jira.test.ts) | 16 | Jira key extraction and context fetching |
 
-### Dashboard (1 file)
+### Dashboard (React + Three.js — 8 source files)
 | File | Description |
 |------|-------------|
-| [src/dashboard/index.html](file:///c:/Users/deevy/OneDrive/Desktop/keys/Fault/src/dashboard/index.html) | 45KB self-contained real-time analysis UI with glassmorphism dark theme |
+| [App.tsx](file:///c:/Users/deevy/OneDrive/Desktop/keys/Fault/src/dashboard/src/App.tsx) | Root component with simulation orchestration + demo runner |
+| [DashboardCanvas.tsx](file:///c:/Users/deevy/OneDrive/Desktop/keys/Fault/src/dashboard/src/components/DashboardCanvas.tsx) | 3D WebGL scene with stars, grid, lights + camera controller |
+| [CommitNode.tsx](file:///c:/Users/deevy/OneDrive/Desktop/keys/Fault/src/dashboard/src/components/CommitNode.tsx) | Interactive 3D orbital nodes with glow, pulse, and tooltip |
+| [ConnectionLines.tsx](file:///c:/Users/deevy/OneDrive/Desktop/keys/Fault/src/dashboard/src/components/ConnectionLines.tsx) | Bezier connection paths + animated data packets |
+| [ParticleWave.tsx](file:///c:/Users/deevy/OneDrive/Desktop/keys/Fault/src/dashboard/src/components/ParticleWave.tsx) | 2025-particle wave floor with mouse force field |
+| [GlassPanel.tsx](file:///c:/Users/deevy/OneDrive/Desktop/keys/Fault/src/dashboard/src/components/GlassPanel.tsx) | Glassmorphic HUD with progress ring, file feed, guardrail ticker |
+| [useDashboardStore.ts](file:///c:/Users/deevy/OneDrive/Desktop/keys/Fault/src/dashboard/src/store/useDashboardStore.ts) | Zustand reactive store with 8 simulated PR files |
+| [index.css](file:///c:/Users/deevy/OneDrive/Desktop/keys/Fault/src/dashboard/src/index.css) | Design tokens, glow effects, editor styling, scrollbar customization |
 
 ---
 
