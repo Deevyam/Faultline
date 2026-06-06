@@ -37,7 +37,7 @@ export async function phase1Scan(code: string, filename: string): Promise<ScanRe
       model: PHASE1_MODEL,
       response_format: { type: 'json_object' },
       temperature: 0.1,
-      max_tokens: 4096,
+      max_tokens: 2048,
       messages: [
         { role: 'system', content: PHASE1_SYSTEM_PROMPT },
         {
@@ -53,7 +53,12 @@ export async function phase1Scan(code: string, filename: string): Promise<ScanRe
       return { findings: [], filesScanned: 1, modelUsed: PHASE1_MODEL, scanDurationMs: Date.now() - startTime };
     }
 
-    const parsed = JSON.parse(content);
+    let jsonString = content;
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      jsonString = jsonMatch[0];
+    }
+    const parsed = JSON.parse(jsonString);
     const result: ScanResult = {
       findings: parsed.findings || [],
       filesScanned: 1,
@@ -103,7 +108,7 @@ export async function phase2Reason(
     const res = await client.chat.completions.create({
       model: PHASE2_MODEL,
       temperature: 0.2,
-      max_tokens: 4096,
+      max_tokens: 2048,
       messages: [
         { role: 'system', content: PHASE2_SYSTEM_PROMPT },
         { role: 'user', content: prompt }
