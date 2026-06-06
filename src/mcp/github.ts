@@ -2,6 +2,7 @@ import { Octokit } from '@octokit/rest';
 import { PRFile, EnrichedFinding } from '../types';
 import { logger } from '../utils/logger';
 import { formatFindingComment, buildReviewSummary } from '../utils/formatter';
+import { isMcpConfigured, callMcpTool, getMcpClient } from './client';
 
 let octokit: Octokit;
 
@@ -19,10 +20,53 @@ function getOctokit(): Octokit {
   return octokit;
 }
 
+function findTool(names: string[], patterns: string[]): string | undefined {
+  for (const pattern of patterns) {
+    const match = names.find(n => n.toLowerCase().includes(pattern.toLowerCase()));
+    if (match) return match;
+  }
+  return undefined;
+}
+
 export async function getPRFiles(
   owner: string, repo: string, prNumber: number
 ): Promise<PRFile[]> {
-  logger.info('Fetching PR files', { owner, repo, prNumber });
+  if (isMcpConfigured()) {
+    try {
+      const client = await getMcpClient('github');
+      const toolsResult = await client.listTools();
+      const toolNames = toolsResult.tools.map(t => t.name);
+      
+      const toolName = findTool(toolNames, ['list_pull_request_files', 'list_pr_files', 'get_pr_files', 'list_files']);
+      if (toolName) {
+        logger.info(`Using MCP tool ${toolName} for getPRFiles`);
+        const result = await callMcpTool('github', toolName, {
+          owner,
+          repo,
+          pr_number: prNumber,
+          prNumber
+        });
+        
+        const textContent = result.find((c: any) => c.type === 'text')?.text;
+        if (textContent) {
+          const parsed = JSON.parse(textContent);
+          if (Array.isArray(parsed)) {
+            return parsed.map((f: any) => ({
+              filename: f.filename || f.path,
+              status: f.status,
+              additions: f.additions,
+              deletions: f.deletions,
+              patch: f.patch,
+            }));
+          }
+        }
+      }
+    } catch (error: any) {
+      logger.warn('Failed to fetch PR files via MCP, falling back to REST', { error: error.message });
+    }
+  }
+
+  logger.info('Fetching PR files via REST', { owner, repo, prNumber });
   const client = getOctokit();
 
   const { data } = await client.pulls.listFiles({
@@ -44,7 +88,46 @@ export async function getPRFiles(
 export async function getFileContent(
   owner: string, repo: string, path: string, ref: string
 ): Promise<string> {
-  logger.debug('Fetching file content', { owner, repo, path, ref });
+  if (isMcpConfigured()) {
+    try {
+      const client = await getMcpClient('github');
+      const toolsResult = await client.listTools();
+      const toolNames = toolsResult.tools.map(t => t.name);
+      
+      const toolName = findTool(toolNames, ['get_file_contents', 'get_file_content', 'read_file_content', 'get_file', 'read_file']);
+      if (toolName) {
+        logger.info(`Using MCP tool ${toolName} for getFileContent`);
+        const result = await callMcpTool('github', toolName, {
+          owner,
+          repo,
+          path,
+          branch: ref,
+          ref
+        });
+        
+        const textContent = result.find((c: any) => c.type === 'text')?.text;
+        if (textContent) {
+          try {
+            const parsed = JSON.parse(textContent);
+            if (typeof parsed === 'object' && parsed !== null) {
+              if (parsed.content) {
+                if (parsed.encoding === 'base64') {
+                  return Buffer.from(parsed.content, 'base64').toString('utf-8');
+                }
+                return parsed.content;
+              }
+            }
+          } catch {
+            return textContent;
+          }
+        }
+      }
+    } catch (error: any) {
+      logger.warn('Failed to fetch file content via MCP, falling back to REST', { error: error.message });
+    }
+  }
+
+  logger.debug('Fetching file content via REST', { owner, repo, path, ref });
   const client = getOctokit();
 
   try {
@@ -57,7 +140,7 @@ export async function getFileContent(
     }
     throw new Error(`No content found for ${path}`);
   } catch (error: any) {
-    logger.error('Failed to fetch file content', { path, error: error.message });
+    logger.error('Failed to fetch file content via REST', { path, error: error.message });
     throw error;
   }
 }
@@ -66,7 +149,38 @@ export async function postReviewComment(
   owner: string, repo: string, prNumber: number,
   finding: EnrichedFinding
 ): Promise<void> {
-  logger.info('Posting review comment', {
+  const body = formatFindingComment(finding);
+
+  if (isMcpConfigured()) {
+    try {
+      const client = await getMcpClient('github');
+      const toolsResult = await client.listTools();
+      const toolNames = toolsResult.tools.map(t => t.name);
+      
+      const toolName = findTool(toolNames, ['create_pull_request_comment', 'create_review_comment', 'post_review_comment', 'create_comment']);
+      if (toolName) {
+        logger.info(`Using MCP tool ${toolName} for postReviewComment`);
+        await callMcpTool('github', toolName, {
+          owner,
+          repo,
+          pr_number: prNumber,
+          prNumber,
+          commit_id: finding.commitSha,
+          commitSha: finding.commitSha,
+          path: finding.filePath,
+          filePath: finding.filePath,
+          line: finding.lineNumber,
+          lineNumber: finding.lineNumber,
+          body
+        });
+        return;
+      }
+    } catch (error: any) {
+      logger.warn('Failed to post review comment via MCP, falling back to REST', { error: error.message });
+    }
+  }
+
+  logger.info('Posting review comment via REST', {
     owner, repo, prNumber,
     pattern: finding.pattern,
     file: finding.filePath,
@@ -81,10 +195,9 @@ export async function postReviewComment(
       commit_id: finding.commitSha,
       path: finding.filePath,
       line: finding.lineNumber,
-      body: formatFindingComment(finding),
+      body,
     });
   } catch (error: any) {
-    // If inline comment fails (e.g. line not in diff), post as issue comment
     logger.warn('Inline comment failed, falling back to issue comment', {
       error: error.message,
       file: finding.filePath,
@@ -92,7 +205,7 @@ export async function postReviewComment(
     await client.issues.createComment({
       owner, repo,
       issue_number: prNumber,
-      body: formatFindingComment(finding),
+      body,
     });
   }
 }
@@ -101,20 +214,45 @@ export async function submitFinalReview(
   owner: string, repo: string, prNumber: number,
   findings: EnrichedFinding[]
 ): Promise<void> {
-  const client = getOctokit();
   const hasCritical = findings.some(f => f.severity === 'critical');
   const event = hasCritical ? 'REQUEST_CHANGES' as const : 'COMMENT' as const;
+  const body = buildReviewSummary(findings);
 
-  logger.info('Submitting final review', {
+  if (isMcpConfigured()) {
+    try {
+      const client = await getMcpClient('github');
+      const toolsResult = await client.listTools();
+      const toolNames = toolsResult.tools.map(t => t.name);
+      
+      const toolName = findTool(toolNames, ['create_pull_request_review', 'create_review', 'submit_review', 'submit_pull_request_review']);
+      if (toolName) {
+        logger.info(`Using MCP tool ${toolName} for submitFinalReview`);
+        await callMcpTool('github', toolName, {
+          owner,
+          repo,
+          pr_number: prNumber,
+          prNumber,
+          event,
+          body
+        });
+        return;
+      }
+    } catch (error: any) {
+      logger.warn('Failed to submit final review via MCP, falling back to REST', { error: error.message });
+    }
+  }
+
+  logger.info('Submitting final review via REST', {
     owner, repo, prNumber,
     event,
     findingsCount: findings.length,
   });
+  const client = getOctokit();
 
   await client.pulls.createReview({
     owner, repo,
     pull_number: prNumber,
     event,
-    body: buildReviewSummary(findings),
+    body,
   });
 }

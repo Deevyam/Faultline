@@ -5,6 +5,8 @@ import dotenv from 'dotenv';
 import { handlePullRequest } from '../agent';
 import { logger } from '../utils/logger';
 import { WebhookPayload } from '../types';
+import { createMcpServer } from './mcpServer';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 
 dotenv.config();
 
@@ -13,7 +15,13 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
 
 // Raw body for webhook signature verification
 app.use('/webhook', express.raw({ type: 'application/json' }));
-app.use(express.json());
+app.use((req, res, next) => {
+  if (req.path.startsWith('/mcp/')) {
+    next();
+  } else {
+    express.json()(req, res, next);
+  }
+});
 
 // ---- Dashboard ----
 // In dev (ts-node): __dirname = src/server → resolve to src/dashboard/dist
@@ -43,6 +51,43 @@ app.get('/status', (_req, res) => {
     uptime: process.uptime(),
     memory: process.memoryUsage(),
   });
+});
+
+// ---- MCP Server Endpoints ----
+const mcpTransports = new Map<string, SSEServerTransport>();
+
+app.get('/mcp/sse', async (req, res) => {
+  logger.info('Received connection request for MCP SSE');
+  
+  const transport = new SSEServerTransport('/mcp/messages', res);
+  const sessionId = transport.sessionId;
+  mcpTransports.set(sessionId, transport);
+  
+  logger.info(`Established MCP session: ${sessionId}`);
+
+  res.on('close', () => {
+    logger.info(`MCP session closed: ${sessionId}`);
+    mcpTransports.delete(sessionId);
+  });
+
+  const server = createMcpServer();
+  await server.connect(transport);
+});
+
+app.post('/mcp/messages', async (req, res) => {
+  const sessionId = req.query.sessionId as string;
+  if (!sessionId) {
+    res.status(400).json({ error: 'Missing sessionId query parameter' });
+    return;
+  }
+
+  const transport = mcpTransports.get(sessionId);
+  if (!transport) {
+    res.status(404).json({ error: `Session not found: ${sessionId}` });
+    return;
+  }
+
+  await transport.handlePostMessage(req, res);
 });
 
 // GitHub webhook endpoint

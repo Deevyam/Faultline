@@ -1,21 +1,21 @@
 import { EnrichedFinding } from '../types';
 import { logger } from '../utils/logger';
+import { isMcpConfigured, callMcpTool, getMcpClient } from './client';
+
+function findTool(names: string[], patterns: string[]): string | undefined {
+  for (const pattern of patterns) {
+    const match = names.find(n => n.toLowerCase().includes(pattern.toLowerCase()));
+    if (match) return match;
+  }
+  return undefined;
+}
 
 export async function alertSlack(
   owner: string, repo: string, prNumber: number,
   criticals: EnrichedFinding[]
 ): Promise<void> {
-  if (!process.env.SLACK_BOT_TOKEN || !process.env.SLACK_ALERT_CHANNEL) {
-    logger.debug('Slack not configured, skipping alert');
-    return;
-  }
-
-  logger.info('Sending Slack alert for critical findings', {
-    repo: `${owner}/${repo}`,
-    prNumber,
-    criticalCount: criticals.length,
-  });
-
+  const text = `🚨 Faultline found ${criticals.length} critical resilience issues in ${owner}/${repo}#${prNumber}`;
+  
   const blocks = [
     {
       type: 'header',
@@ -43,6 +43,40 @@ export async function alertSlack(
     })),
   ];
 
+  if (isMcpConfigured()) {
+    try {
+      const client = await getMcpClient('slack');
+      const toolsResult = await client.listTools();
+      const toolNames = toolsResult.tools.map(t => t.name);
+      
+      const toolName = findTool(toolNames, ['slack_post_message', 'post_message', 'send_message', 'slack_send_message']);
+      if (toolName) {
+        logger.info(`Using MCP tool ${toolName} for alertSlack`);
+        await callMcpTool('slack', toolName, {
+          channel_id: process.env.SLACK_ALERT_CHANNEL || '',
+          channel: process.env.SLACK_ALERT_CHANNEL || '',
+          text,
+          blocks
+        });
+        return;
+      }
+    } catch (error: any) {
+      logger.warn('Failed to send Slack alert via MCP, falling back to REST', { error: error.message });
+    }
+  }
+
+  // REST API logic fallback
+  if (!process.env.SLACK_BOT_TOKEN || !process.env.SLACK_ALERT_CHANNEL) {
+    logger.debug('Slack not configured (missing token/channel), skipping alert');
+    return;
+  }
+
+  logger.info('Sending Slack alert via REST API', {
+    repo: `${owner}/${repo}`,
+    prNumber,
+    criticalCount: criticals.length,
+  });
+
   try {
     const response = await fetch('https://slack.com/api/chat.postMessage', {
       method: 'POST',
@@ -53,7 +87,7 @@ export async function alertSlack(
       body: JSON.stringify({
         channel: process.env.SLACK_ALERT_CHANNEL,
         blocks,
-        text: `🚨 Faultline found ${criticals.length} critical resilience issues in ${owner}/${repo}#${prNumber}`,
+        text,
       }),
       signal: AbortSignal.timeout(10000),
     });
@@ -64,7 +98,6 @@ export async function alertSlack(
       logger.info('Slack alert sent successfully');
     }
   } catch (error: any) {
-    logger.warn('Failed to send Slack alert', { error: error.message });
-    // Non-critical — don't throw
+    logger.warn('Failed to send Slack alert via REST API', { error: error.message });
   }
 }
