@@ -28,14 +28,15 @@ export const MODEL_COSTS = {
 } as const;
 
 export function getModelDisplayName(model: string): string {
+  const cleanModel = model.split('/').pop() || model;
   const names: Record<string, string> = {
-    'phase1-scan': 'Llama 3 70B (Phase 1)',
-    'phase2-reasoning': 'Claude 3.7 Sonnet (Phase 2)',
-    [MODELS.CLAUDE_SONNET]: 'Claude 3.7 Sonnet',
+    'phase1-scan': 'Llama 3 70B',
+    'phase2-reasoning': 'Claude 4.6 Sonnet',
+    [MODELS.CLAUDE_SONNET]: 'Claude 4.6 Sonnet',
     [MODELS.DEEPSEEK_R1]: 'DeepSeek R1',
     [MODELS.LLAMA_70B]: 'Llama 3 70B',
     [MODELS.KIMI]: 'Kimi K2.5',
     [MODELS.GLM]: 'GLM-5',
   };
-  return names[model] || model;
+  return names[cleanModel] || cleanModel;
 }

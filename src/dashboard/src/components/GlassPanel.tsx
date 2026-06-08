@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDashboardStore } from '../store/useDashboardStore';
 
@@ -7,6 +8,10 @@ interface GlassPanelProps {
 }
 
 export function GlassPanel({ onStartDemo, onSwitchLive }: GlassPanelProps) {
+  const [prUrl, setPrUrl] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
   const {
     mode,
     running,
@@ -21,7 +26,39 @@ export function GlassPanel({ onStartDemo, onSwitchLive }: GlassPanelProps) {
     guardrailEvents,
     activeNodeId,
     setActiveNodeId,
+    targetRepo,
+    prTitle,
+    prNumber,
+    prAuthor,
+    phase1Model,
+    phase2Model,
   } = useDashboardStore();
+
+  const handleTestPr = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!prUrl) return;
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      const targetUrl = window.location.port !== '3000'
+        ? 'http://localhost:3000/api/analyze-pr'
+        : '/api/analyze-pr';
+
+      const response = await fetch(targetUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prUrl }),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Failed to trigger analysis');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Progress Calculations
   const progressPct = totalFiles > 0 ? Math.round((filesAnalyzed / totalFiles) * 100) : 0;
@@ -37,6 +74,7 @@ export function GlassPanel({ onStartDemo, onSwitchLive }: GlassPanelProps) {
   const claudeOffset = donutCircumference - (claudePct * donutCircumference);
 
   const getLangIcon = (filename: string) => {
+    if (!filename) return '📄';
     const ext = filename.split('.').pop() || '';
     const icons: Record<string, string> = {
       py: '🐍',
@@ -51,7 +89,7 @@ export function GlassPanel({ onStartDemo, onSwitchLive }: GlassPanelProps) {
 
   return (
     <div className="absolute inset-0 flex flex-col pointer-events-none z-10 select-none">
-      
+
       {/* ================= HEADER ================= */}
       <header className="h-[62px] w-full border-b border-white/[0.04] bg-[#020205]/65 backdrop-blur-xl flex items-center justify-between px-8 pointer-events-auto">
         <div className="flex items-center gap-3">
@@ -69,20 +107,19 @@ export function GlassPanel({ onStartDemo, onSwitchLive }: GlassPanelProps) {
           {/* Status Badge */}
           <div className="flex items-center gap-2.5">
             <span
-              className={`w-1.5 h-1.5 rounded-full ${
-                running
+              className={`w-1.5 h-1.5 rounded-full ${running
                   ? 'bg-rose-500 glow-dot-red animate-status-pulse-red'
                   : filesAnalyzed === totalFiles && totalFiles > 0
-                  ? 'bg-[#10b981] glow-dot-green'
-                  : 'bg-slate-600'
-              }`}
+                    ? 'bg-[#10b981] glow-dot-green'
+                    : 'bg-slate-600'
+                }`}
             />
             <span className="text-tracked-header text-[8px]">
               {running
                 ? 'Processing PR'
                 : filesAnalyzed === totalFiles && totalFiles > 0
-                ? 'Analysis Complete'
-                : 'Standby Mode'}
+                  ? 'Analysis Complete'
+                  : 'Standby Mode'}
             </span>
           </div>
 
@@ -100,8 +137,8 @@ export function GlassPanel({ onStartDemo, onSwitchLive }: GlassPanelProps) {
             <span className="font-mono text-[10px] font-semibold text-rose-300">
               {running
                 ? claudeCalls > 0
-                  ? 'Claude 3.7 (Deep)'
-                  : 'Llama 8B (Fast)'
+                  ? `${phase2Model} (Deep)`
+                  : `${phase1Model} (Fast)`
                 : 'Idle'}
             </span>
           </div>
@@ -111,21 +148,19 @@ export function GlassPanel({ onStartDemo, onSwitchLive }: GlassPanelProps) {
         <div className="flex items-center gap-2.5">
           <button
             onClick={onStartDemo}
-            className={`px-3 py-1 rounded border text-[9px] font-bold uppercase tracking-[0.12em] transition-all duration-300 cursor-pointer ${
-              mode === 'demo'
+            className={`px-3 py-1 rounded border text-[9px] font-bold uppercase tracking-[0.12em] transition-all duration-300 cursor-pointer ${mode === 'demo'
                 ? 'bg-rose-500/10 border-rose-500/40 text-rose-300'
                 : 'bg-transparent border-white/5 text-slate-400 hover:text-slate-200 hover:border-white/10'
-            }`}
+              }`}
           >
             Run Demo
           </button>
           <button
             onClick={onSwitchLive}
-            className={`px-3 py-1 rounded border text-[9px] font-bold uppercase tracking-[0.12em] transition-all duration-300 cursor-pointer ${
-              mode === 'live'
+            className={`px-3 py-1 rounded border text-[9px] font-bold uppercase tracking-[0.12em] transition-all duration-300 cursor-pointer ${mode === 'live'
                 ? 'bg-rose-500/10 border-rose-500/40 text-rose-300'
                 : 'bg-transparent border-white/5 text-slate-400 hover:text-slate-200 hover:border-white/10'
-            }`}
+              }`}
           >
             Live Feed
           </button>
@@ -134,23 +169,32 @@ export function GlassPanel({ onStartDemo, onSwitchLive }: GlassPanelProps) {
 
       {/* ================= MAIN LAYOUT ================= */}
       <div className="flex-1 flex justify-between overflow-hidden">
-        
+
         {/* ================= LEFT SIDEBAR (MONOLITHIC PANE) ================= */}
         <aside className="w-[340px] border-r border-white/[0.04] bg-[#020205]/45 backdrop-blur-xl flex flex-col p-7 pointer-events-auto h-full overflow-y-auto">
-          
+
           {/* PR Header */}
           <div className="flex flex-col">
             <span className="text-tracked-header">Target Repository</span>
-            <span className="font-mono text-[10px] text-slate-400 mt-1">acme-corp/payments-service</span>
+            <span className="font-mono text-[10px] text-slate-400 mt-1">{targetRepo}</span>
             <h2 className="text-lg font-extrabold tracking-[-0.02em] leading-snug text-slate-100 mt-2">
-              feat: add Stripe retry logic & connection pooling
+              {prTitle}
             </h2>
             <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono mt-3">
-              <span className="text-rose-500 font-bold">#847</span>
+              {prNumber > 0 ? (
+                <>
+                  <span className="text-rose-500 font-bold">#{prNumber}</span>
+                  <span>•</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-cyan-400 font-bold">Repository Scan</span>
+                  <span>•</span>
+                </>
+              )}
+              <span className="text-cyan-400">{prAuthor}</span>
               <span>•</span>
-              <span className="text-cyan-400">@sarah-chen</span>
-              <span>•</span>
-              <span>8 files changed</span>
+              <span>{totalFiles} file{totalFiles !== 1 ? 's' : ''} {prNumber > 0 ? 'changed' : 'scanned'}</span>
             </div>
           </div>
 
@@ -197,17 +241,17 @@ export function GlassPanel({ onStartDemo, onSwitchLive }: GlassPanelProps) {
           {/* Stats List (Minimalist - no boxes) */}
           <div className="flex flex-col gap-3">
             <span className="text-tracked-header mb-1">Detections Metrics</span>
-            
+
             <div className="flex justify-between items-center py-2 border-b border-white/[0.02]">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Scanned Files</span>
               <span className="font-mono text-xs font-semibold text-slate-200">{filesAnalyzed}</span>
             </div>
-            
+
             <div className="flex justify-between items-center py-2 border-b border-white/[0.02]">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Findings</span>
               <span className="font-mono text-xs font-semibold text-slate-200">{totalFindings}</span>
             </div>
-            
+
             <div className="flex justify-between items-center py-2">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Critical Failures</span>
               <span className="font-mono text-xs font-semibold text-rose-500 glow-text-rose">{criticalCount}</span>
@@ -261,14 +305,14 @@ export function GlassPanel({ onStartDemo, onSwitchLive }: GlassPanelProps) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
-                    <span>Llama 8B</span>
+                    <span>{phase1Model}</span>
                   </div>
                   <span className="font-bold text-slate-200">{llamaCalls}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                    <span>Claude 3.7</span>
+                    <span>{phase2Model}</span>
                   </div>
                   <span className="font-bold text-slate-200">{claudeCalls}</span>
                 </div>
@@ -292,44 +336,70 @@ export function GlassPanel({ onStartDemo, onSwitchLive }: GlassPanelProps) {
           {/* Accordion File Feed List */}
           <div className="flex-1 overflow-y-auto flex flex-col pr-1 scroll-smooth">
             {mode === 'live' && filesAnalyzed === 0 && !running ? (
-              <div className="flex flex-col items-center justify-center h-[350px] text-center p-6 border border-dashed border-white/5 rounded-xl bg-black/10">
+              <div className="flex flex-col items-center justify-center h-[420px] text-center p-6 border border-dashed border-white/5 rounded-xl bg-black/10">
                 <span className="text-2xl mb-2">📡</span>
                 <span className="font-bold text-slate-300 text-xs mb-1">Waiting for Webhook</span>
                 <p className="text-[10px] text-slate-500 max-w-[220px] leading-relaxed">
                   The analysis server is listening. Push a PR commit or trigger a run.
                 </p>
-                <div className="font-mono text-[9px] text-slate-600 bg-black/40 px-2 py-0.5 rounded mt-3">
+                <div className="font-mono text-[9px] text-slate-600 bg-black/40 px-2 py-0.5 rounded mt-2">
                   POST /webhook
                 </div>
+
+                <div className="w-full h-px bg-white/5 my-4" />
+
+                <form onSubmit={handleTestPr} className="w-full flex flex-col gap-2 pointer-events-auto">
+                  <span className="text-tracked-header text-[8px] self-start uppercase font-bold tracking-widest text-slate-500">Test a GitHub PR or Repo</span>
+                  <input
+                    type="text"
+                    placeholder="GitHub URL (https://github.com/owner/repo/pull/123 or .../repo)"
+                    value={prUrl}
+                    onChange={(e) => setPrUrl(e.target.value)}
+                    disabled={loading}
+                    className="w-full bg-black/40 border border-white/10 rounded px-2.5 py-1.5 text-[10px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-rose-500/40 transition-all font-mono"
+                  />
+                  <button
+                    type="submit"
+                    disabled={loading || !prUrl}
+                    className="w-full bg-rose-600/85 hover:bg-rose-600 disabled:bg-slate-900 disabled:text-slate-600 text-white rounded font-bold uppercase tracking-wider text-[9px] py-1.5 cursor-pointer transition-colors"
+                  >
+                    {loading ? 'Submitting...' : 'Analyze Codebase'}
+                  </button>
+                  {errorMsg && (
+                    <div className="text-rose-400 text-[9px] font-mono mt-1 text-center">
+                      {errorMsg}
+                    </div>
+                  )}
+                </form>
               </div>
             ) : (
               files.map((file, idx) => {
+                if (!file) return null;
                 const isSelected = activeNodeId === idx;
                 const isScanning = file.status === 'scanning';
                 const isComplete = file.status === 'complete';
-                const hasFindings = file.findings.length > 0;
-                
+                const hasFindings = file.findings && file.findings.length > 0;
+
                 return (
                   <div
-                    key={file.name}
+                    key={file.name || `file-${idx}`}
                     id={`file-card-${idx}`}
-                    className={`border-b border-white/[0.03] transition-all duration-300 ${
-                      isSelected ? 'bg-white/[0.01]' : 'hover:bg-white/[0.005]'
-                    }`}
+                    className={`border-b border-white/[0.03] transition-all duration-300 ${isSelected ? 'bg-white/[0.01]' : 'hover:bg-white/[0.005]'
+                      }`}
                   >
                     {/* File row trigger */}
                     <div
                       onClick={() => setActiveNodeId(isSelected ? null : idx)}
                       className="py-4.5 px-3 flex items-center justify-between gap-3 cursor-pointer select-none"
                     >
-                      <span className="text-sm flex-shrink-0">{getLangIcon(file.name)}</span>
-                      
+                      <span className="text-sm flex-shrink-0">{getLangIcon(file.name || '')}</span>
+
                       <div className="flex-1 min-w-0">
                         <div className="font-mono text-xs font-bold text-slate-100 truncate">
-                          {file.name}
+                          {file.name || 'unknown'}
                         </div>
                         <div className="flex items-center gap-2 text-[9px] font-mono text-slate-500 mt-1">
-                          <span>{file.phase}</span>
+                          <span>{file.phase || 'Queued'}</span>
                         </div>
                       </div>
 
@@ -346,9 +416,9 @@ export function GlassPanel({ onStartDemo, onSwitchLive }: GlassPanelProps) {
                         )}
                         {isComplete && hasFindings && (
                           <div className="flex items-center gap-1.5">
-                            <span className={`w-1.5 h-1.5 rounded-full ${file.findings.some(f => f.severity === 'critical') ? 'bg-[#e11d48] glow-dot-red' : 'bg-orange-500 glow-dot-orange'}`} />
-                            <span className={`text-[9px] font-mono tracking-wider uppercase font-bold ${file.findings.some(f => f.severity === 'critical') ? 'text-rose-400' : 'text-orange-400'}`}>
-                              {file.findings.length} Issue{file.findings.length > 1 ? 's' : ''}
+                            <span className={`w-1.5 h-1.5 rounded-full ${file.findings && file.findings.some(f => f.severity === 'critical') ? 'bg-[#e11d48] glow-dot-red' : 'bg-orange-500 glow-dot-orange'}`} />
+                            <span className={`text-[9px] font-mono tracking-wider uppercase font-bold ${file.findings && file.findings.some(f => f.severity === 'critical') ? 'text-rose-400' : 'text-orange-400'}`}>
+                              {(file.findings || []).length} Issue{(file.findings || []).length > 1 ? 's' : ''}
                             </span>
                           </div>
                         )}
@@ -387,7 +457,7 @@ export function GlassPanel({ onStartDemo, onSwitchLive }: GlassPanelProps) {
                           className="overflow-hidden bg-[#020205]/40"
                         >
                           <div className="pb-6 px-4 pt-1 flex flex-col gap-5">
-                            {file.findings.length === 0 ? (
+                            {!file.findings || file.findings.length === 0 ? (
                               <div className="text-center py-5 text-[10px] text-slate-500 font-semibold tracking-wider uppercase">
                                 ✓ No vulnerability or resilience concerns.
                               </div>
@@ -397,11 +467,10 @@ export function GlassPanel({ onStartDemo, onSwitchLive }: GlassPanelProps) {
                                   {/* Severity indicator */}
                                   <div className="flex justify-between items-center">
                                     <div className="flex items-center gap-2">
-                                      <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-sm border uppercase font-mono ${
-                                        finding.severity === 'critical'
+                                      <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-sm border uppercase font-mono ${finding.severity === 'critical'
                                           ? 'border-rose-500/20 bg-rose-500/10 text-rose-400'
                                           : 'border-orange-500/20 bg-orange-500/10 text-orange-400'
-                                      }`}>
+                                        }`}>
                                         {finding.severity}
                                       </span>
                                       <span className="font-mono text-xs font-bold text-slate-200">
@@ -424,7 +493,7 @@ export function GlassPanel({ onStartDemo, onSwitchLive }: GlassPanelProps) {
                                       <div className="flex items-center gap-1.5">
                                         <span className="text-emerald-500 text-[8px]">●</span>
                                         <span className="font-bold text-slate-300">
-                                          {file.name.split('/').pop()}
+                                          {(file.name || 'unknown').split('/').pop()}
                                         </span>
                                         <span className="text-slate-600 text-[8px]">Suggested Fix</span>
                                       </div>
@@ -435,11 +504,11 @@ export function GlassPanel({ onStartDemo, onSwitchLive }: GlassPanelProps) {
                                     <div className="flex text-[11px] font-mono leading-relaxed p-3 overflow-x-auto">
                                       {/* Editor line gutter */}
                                       <div className="editor-gutter flex flex-col pr-2.5 selection:bg-transparent">
-                                        {finding.fix.split('\n').map((_, idx) => (
+                                        {(finding.fix || '').split('\n').map((_, idx) => (
                                           <div key={idx}>{finding.line + idx}</div>
                                         ))}
                                       </div>
-                                      
+
                                       {/* Code block */}
                                       <pre className="font-mono text-slate-300 text-[11px] pl-3 selection:bg-rose-500/20 w-full overflow-x-auto leading-relaxed">
                                         {finding.fix}
@@ -467,7 +536,7 @@ export function GlassPanel({ onStartDemo, onSwitchLive }: GlassPanelProps) {
           <span className="text-tracked-header mt-0.5 flex-shrink-0">
             🛡️ Guardrail Status
           </span>
-          
+
           {/* Scrolling Ticker using Framer Motion */}
           <div className="flex-1 overflow-hidden relative h-[24px]">
             <div className="absolute inset-0 flex items-center gap-6 overflow-hidden">

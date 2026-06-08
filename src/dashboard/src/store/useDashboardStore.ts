@@ -45,7 +45,15 @@ export interface DashboardState {
   hoveredNodeId: number | null;
   files: FileData[];
   guardrailEvents: GuardrailEvent[];
-  
+
+  targetRepo: string;
+  prTitle: string;
+  prNumber: number;
+  prAuthor: string;
+
+  phase1Model: string;
+  phase2Model: string;
+
   // Actions
   setMode: (mode: 'demo' | 'live') => void;
   setRunning: (running: boolean) => void;
@@ -58,6 +66,8 @@ export interface DashboardState {
   incrementLlamaCalls: () => void;
   incrementClaudeCalls: () => void;
   resetSimulation: () => void;
+  startLiveRun: (repo: string, prNumber: number, prTitle: string, fileNames: string[], phase1Model?: string, phase2Model?: string) => void;
+  updateStateFromLive: (liveState: any) => void;
 }
 
 const INITIAL_FILES: FileData[] = [
@@ -67,7 +77,7 @@ const INITIAL_FILES: FileData[] = [
     phase1Time: 1200,
     phase2Time: 1800,
     model: 'Llama 8B',
-    modelPhase2: 'Claude 3.7',
+    modelPhase2: 'claude 4.5',
     status: 'queued',
     progress: 0,
     phase: 'Queued',
@@ -94,7 +104,7 @@ const INITIAL_FILES: FileData[] = [
     phase1Time: 1000,
     phase2Time: 1600,
     model: 'Llama 8B',
-    modelPhase2: 'Claude 3.7',
+    modelPhase2: 'claude 4.5',
     status: 'queued',
     progress: 0,
     phase: 'Queued',
@@ -114,7 +124,7 @@ const INITIAL_FILES: FileData[] = [
     phase1Time: 900,
     phase2Time: 1400,
     model: 'Llama 8B',
-    modelPhase2: 'Claude 3.7',
+    modelPhase2: 'claude 4.5',
     status: 'queued',
     progress: 0,
     phase: 'Queued',
@@ -154,7 +164,7 @@ const INITIAL_FILES: FileData[] = [
     phase1Time: 1300,
     phase2Time: 2000,
     model: 'Llama 8B',
-    modelPhase2: 'Claude 3.7',
+    modelPhase2: 'claude 4.5',
     status: 'queued',
     progress: 0,
     phase: 'Queued',
@@ -186,7 +196,7 @@ const INITIAL_FILES: FileData[] = [
     phase1Time: 1100,
     phase2Time: 1700,
     model: 'Llama 8B',
-    modelPhase2: 'Claude 3.7',
+    modelPhase2: 'claude 4.5',
     status: 'queued',
     progress: 0,
     phase: 'Queued',
@@ -206,7 +216,7 @@ const INITIAL_FILES: FileData[] = [
     phase1Time: 1000,
     phase2Time: 1500,
     model: 'Llama 8B',
-    modelPhase2: 'Claude 3.7',
+    modelPhase2: 'claude 4.5',
     status: 'queued',
     progress: 0,
     phase: 'Queued',
@@ -239,29 +249,37 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   files: INITIAL_FILES.map(f => ({ ...f })),
   guardrailEvents: [],
 
+  targetRepo: 'acme-corp/payments-service',
+  prTitle: 'feat: add Stripe retry logic & connection pooling',
+  prNumber: 847,
+  prAuthor: '@sarah-chen',
+  phase1Model: 'Llama 8B',
+  phase2Model: 'claude 4.5',
+
   setMode: (mode) => set({ mode }),
   setRunning: (running) => set({ running }),
   setStartTime: (startTime) => set({ startTime }),
   setElapsedTime: (elapsedTime) => set({ elapsedTime }),
   setActiveNodeId: (activeNodeId) => set({ activeNodeId }),
   setHoveredNodeId: (hoveredNodeId) => set({ hoveredNodeId }),
-  
+
   updateFile: (index, updates) => set((state) => {
+    if (index < 0 || index >= state.files.length) {
+      return {};
+    }
     const newFiles = [...state.files];
     newFiles[index] = { ...newFiles[index], ...updates };
-    
+
     // Recalculate stats based on updated file runs
     let filesAnalyzed = 0;
     let totalFindings = 0;
     let criticalCount = 0;
-    
+
     newFiles.forEach((file) => {
-      if (file.status === 'complete') {
+      if (file && file.status === 'complete') {
         filesAnalyzed++;
-        totalFindings += file.findings.length;
-        criticalCount += file.findings.filter(f => f.severity === 'critical').length;
-      } else if (file.status === 'scanning') {
-        // Count intermediate findings during scanning if needed
+        totalFindings += (file.findings || []).length;
+        criticalCount += (file.findings || []).filter(f => f.severity === 'critical').length;
       }
     });
 
@@ -303,5 +321,74 @@ export const useDashboardStore = create<DashboardState>((set) => ({
     hoveredNodeId: null,
     files: INITIAL_FILES.map(f => ({ ...f })),
     guardrailEvents: [],
+    targetRepo: 'acme-corp/payments-service',
+    prTitle: 'feat: add Stripe retry logic & connection pooling',
+    prNumber: 847,
+    prAuthor: '@sarah-chen',
+    phase1Model: 'Llama 8B',
+    phase2Model: 'claude 4.5',
+  }),
+
+  startLiveRun: (repo, prNumber, prTitle, fileNames, phase1Model, phase2Model) => set({
+    running: true,
+    mode: 'live',
+    startTime: Date.now(),
+    elapsedTime: '00:00',
+    targetRepo: repo,
+    prNumber: prNumber,
+    prTitle: prTitle,
+    prAuthor: '@live-user',
+    totalFiles: (fileNames || []).length,
+    filesAnalyzed: 0,
+    totalFindings: 0,
+    criticalCount: 0,
+    llamaCalls: 0,
+    claudeCalls: 0,
+    phase1Model: phase1Model || 'Llama 8B',
+    phase2Model: phase2Model || 'claude 4.5',
+    files: (fileNames || []).map(nameOrObj => {
+      const name = typeof nameOrObj === 'string' ? nameOrObj : (nameOrObj as any)?.name || (nameOrObj as any)?.filename || 'unknown';
+      return {
+        name,
+        delay: 0,
+        phase1Time: 0,
+        phase2Time: 0,
+        model: phase1Model || 'Llama 8B',
+        modelPhase2: phase2Model || 'claude 4.5',
+        status: 'queued',
+        progress: 0,
+        phase: 'Queued',
+        findings: []
+      };
+    }),
+    guardrailEvents: []
+  }),
+
+  updateStateFromLive: (liveState) => set({
+    running: liveState.running,
+    targetRepo: liveState.repo,
+    prNumber: liveState.prNumber,
+    prTitle: liveState.prTitle,
+    prAuthor: '@live-user',
+    totalFiles: liveState.files ? liveState.files.length : 0,
+    filesAnalyzed: liveState.filesAnalyzed || 0,
+    totalFindings: liveState.totalFindings || 0,
+    criticalCount: liveState.criticalCount || 0,
+    llamaCalls: liveState.llamaCalls || 0,
+    claudeCalls: liveState.claudeCalls || 0,
+    phase1Model: liveState.phase1Model || 'Llama 8B',
+    phase2Model: liveState.phase2Model || 'claude 4.5',
+    files: (liveState.files || []).map((f: any) => ({
+      name: f.name || f.filename || 'unknown',
+      delay: 0,
+      phase1Time: 0,
+      phase2Time: 0,
+      model: liveState.phase1Model || 'Llama 8B',
+      modelPhase2: liveState.phase2Model || 'claude 4.5',
+      status: f.status || 'queued',
+      progress: f.progress || 0,
+      phase: f.phase || 'Queued',
+      findings: f.findings || []
+    }))
   }),
 }));

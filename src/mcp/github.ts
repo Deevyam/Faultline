@@ -28,6 +28,66 @@ function findTool(names: string[], patterns: string[]): string | undefined {
   return undefined;
 }
 
+export async function getPRDetails(
+  owner: string, repo: string, prNumber: number
+): Promise<{
+  title: string;
+  body: string;
+  headSha: string;
+  headRef: string;
+  baseRef: string;
+  author: string;
+}> {
+  if (isMcpConfigured()) {
+    try {
+      const client = await getMcpClient('github');
+      const toolsResult = await client.listTools();
+      const toolNames = toolsResult.tools.map(t => t.name);
+      
+      const toolName = findTool(toolNames, ['get_pull_request', 'get_pr', 'pull_request']);
+      if (toolName) {
+        logger.info(`Using MCP tool ${toolName} for getPRDetails`);
+        const result = await callMcpTool('github', toolName, {
+          owner,
+          repo,
+          pr_number: prNumber,
+          prNumber,
+          pull_number: prNumber
+        });
+        
+        const textContent = result.find((c: any) => c.type === 'text')?.text;
+        if (textContent) {
+          const data = JSON.parse(textContent);
+          return {
+            title: data.title || '',
+            body: data.body || '',
+            headSha: data.head?.sha || data.head_sha || '',
+            headRef: data.head?.ref || data.head_ref || '',
+            baseRef: data.base?.ref || data.base_ref || '',
+            author: (data.user?.login || data.user || data.author || ''),
+          };
+        }
+      }
+    } catch (error: any) {
+      logger.warn('Failed to fetch PR details via MCP, falling back to REST', { error: error.message });
+    }
+  }
+
+  logger.info('Fetching PR details via REST', { owner, repo, prNumber });
+  const client = getOctokit();
+  const { data } = await client.pulls.get({
+    owner, repo, pull_number: prNumber,
+  });
+  return {
+    title: data.title,
+    body: data.body || '',
+    headSha: data.head.sha,
+    headRef: data.head.ref,
+    baseRef: data.base.ref,
+    author: data.user.login,
+  };
+}
+
 export async function getPRFiles(
   owner: string, repo: string, prNumber: number
 ): Promise<PRFile[]> {
@@ -256,3 +316,120 @@ export async function submitFinalReview(
     body,
   });
 }
+
+export async function getRepositoryDefaultBranch(
+  owner: string, repo: string
+): Promise<string> {
+  if (isMcpConfigured()) {
+    try {
+      const client = await getMcpClient('github');
+      const toolsResult = await client.listTools();
+      const toolNames = toolsResult.tools.map(t => t.name);
+      
+      const toolName = findTool(toolNames, ['get_repository', 'get_repo']);
+      if (toolName) {
+        logger.info(`Using MCP tool ${toolName} for getRepositoryDefaultBranch`);
+        const result = await callMcpTool('github', toolName, { owner, repo });
+        const textContent = result.find((c: any) => c.type === 'text')?.text;
+        if (textContent) {
+          const data = JSON.parse(textContent);
+          return data.default_branch || 'main';
+        }
+      }
+    } catch (error: any) {
+      logger.warn('Failed to fetch default branch via MCP, falling back to REST', { error: error.message });
+    }
+  }
+
+  logger.info('Fetching repository details via REST', { owner, repo });
+  const client = getOctokit();
+  try {
+    const { data } = await client.repos.get({ owner, repo });
+    return data.default_branch || 'main';
+  } catch (error: any) {
+    logger.warn('Failed to fetch default branch via REST', { error: error.message });
+    return 'main';
+  }
+}
+
+export async function getRepoFiles(
+  owner: string, repo: string, ref?: string
+): Promise<PRFile[]> {
+  const files: PRFile[] = [];
+  const maxFiles = 50; // Use same safety ceiling as MAX_FILES_PER_PR
+  
+  async function traverse(currentPath: string) {
+    if (files.length >= maxFiles) return;
+
+    logger.info(`Traversing repository directory: ${currentPath || '(root)'}`);
+    
+    let contents: any;
+    if (isMcpConfigured()) {
+      try {
+        const client = await getMcpClient('github');
+        const toolsResult = await client.listTools();
+        const toolNames = toolsResult.tools.map(t => t.name);
+        
+        const toolName = findTool(toolNames, ['get_file_contents', 'get_file_content', 'read_file_content', 'get_file', 'read_file']);
+        if (toolName) {
+          const result = await callMcpTool('github', toolName, {
+            owner,
+            repo,
+            path: currentPath,
+            ref,
+            branch: ref
+          });
+          
+          const textContent = result.find((c: any) => c.type === 'text')?.text;
+          if (textContent) {
+            contents = JSON.parse(textContent);
+          }
+        }
+      } catch (error: any) {
+        logger.warn(`Failed to fetch repo directory via MCP, falling back to REST`, { path: currentPath, error: error.message });
+      }
+    }
+
+    if (!contents) {
+      const client = getOctokit();
+      try {
+        const { data } = await client.repos.getContent({
+          owner, repo, path: currentPath, ref
+        });
+        contents = data;
+      } catch (error: any) {
+        logger.warn(`Failed to fetch repo directory via REST: ${currentPath}`, { error: error.message });
+        if (currentPath === '') {
+          throw error;
+        }
+        return;
+      }
+    }
+
+    if (Array.isArray(contents)) {
+      for (const item of contents) {
+        if (files.length >= maxFiles) break;
+
+        if (item.type === 'dir') {
+          const skipDirs = ['node_modules', '.git', 'dist', 'build', '.github', 'venv', '__pycache__', 'out', 'bin', 'obj', 'packages'];
+          if (skipDirs.includes(item.name.toLowerCase())) {
+            continue;
+          }
+          await traverse(item.path);
+        } else if (item.type === 'file') {
+          files.push({
+            filename: item.path,
+            status: 'added',
+            additions: 0,
+            deletions: 0
+          });
+        }
+      }
+    }
+  }
+
+  await traverse('');
+  logger.info(`Finished traversing repository. Found ${files.length} files.`, { owner, repo });
+  return files;
+}
+

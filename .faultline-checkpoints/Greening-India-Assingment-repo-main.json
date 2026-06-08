@@ -1,0 +1,248 @@
+{
+  "runId": "Greening-India-Assingment-repo-main",
+  "owner": "Deevyam",
+  "repo": "Greening-India-Assingment",
+  "prNumber": 0,
+  "headSha": "main",
+  "context": {
+    "repoName": "Deevyam/Greening-India-Assingment",
+    "prTitle": "Repository Analysis: Deevyam/Greening-India-Assingment",
+    "prBody": "Analyzing the codebase of Deevyam/Greening-India-Assingment at main",
+    "fileCount": 29,
+    "languages": [
+      "go"
+    ]
+  },
+  "pendingFiles": [
+    {
+      "filename": "backend/internal/middleware/requestid.go",
+      "status": "added",
+      "additions": 0,
+      "deletions": 0
+    },
+    {
+      "filename": "backend/internal/model/activity.go",
+      "status": "added",
+      "additions": 0,
+      "deletions": 0
+    },
+    {
+      "filename": "backend/internal/model/project.go",
+      "status": "added",
+      "additions": 0,
+      "deletions": 0
+    },
+    {
+      "filename": "backend/internal/model/task.go",
+      "status": "added",
+      "additions": 0,
+      "deletions": 0
+    },
+    {
+      "filename": "backend/internal/model/user.go",
+      "status": "added",
+      "additions": 0,
+      "deletions": 0
+    },
+    {
+      "filename": "backend/internal/repository/activity_repo.go",
+      "status": "added",
+      "additions": 0,
+      "deletions": 0
+    },
+    {
+      "filename": "backend/internal/repository/project_repo.go",
+      "status": "added",
+      "additions": 0,
+      "deletions": 0
+    },
+    {
+      "filename": "backend/internal/repository/task_repo.go",
+      "status": "added",
+      "additions": 0,
+      "deletions": 0
+    },
+    {
+      "filename": "backend/internal/repository/user_repo.go",
+      "status": "added",
+      "additions": 0,
+      "deletions": 0
+    },
+    {
+      "filename": "backend/internal/router/router.go",
+      "status": "added",
+      "additions": 0,
+      "deletions": 0
+    },
+    {
+      "filename": "backend/internal/service/activity_service.go",
+      "status": "added",
+      "additions": 0,
+      "deletions": 0
+    },
+    {
+      "filename": "backend/internal/service/auth_service.go",
+      "status": "added",
+      "additions": 0,
+      "deletions": 0
+    },
+    {
+      "filename": "backend/internal/service/project_service.go",
+      "status": "added",
+      "additions": 0,
+      "deletions": 0
+    },
+    {
+      "filename": "backend/internal/service/task_service.go",
+      "status": "added",
+      "additions": 0,
+      "deletions": 0
+    },
+    {
+      "filename": "backend/internal/validator/validator.go",
+      "status": "added",
+      "additions": 0,
+      "deletions": 0
+    },
+    {
+      "filename": "backend/tests/integration_test.go",
+      "status": "added",
+      "additions": 0,
+      "deletions": 0
+    }
+  ],
+  "completedFiles": [
+    {
+      "file": {
+        "filename": "backend/cmd/server/main.go",
+        "status": "added",
+        "additions": 0,
+        "deletions": 0
+      },
+      "findings": [],
+      "analyzedAt": "2026-06-08T06:10:53.377Z"
+    },
+    {
+      "file": {
+        "filename": "backend/internal/config/config.go",
+        "status": "added",
+        "additions": 0,
+        "deletions": 0
+      },
+      "findings": [],
+      "analyzedAt": "2026-06-08T06:10:57.573Z"
+    },
+    {
+      "file": {
+        "filename": "backend/internal/database/postgres.go",
+        "status": "added",
+        "additions": 0,
+        "deletions": 0
+      },
+      "findings": [],
+      "analyzedAt": "2026-06-08T06:11:00.660Z"
+    },
+    {
+      "file": {
+        "filename": "backend/internal/handler/activity.go",
+        "status": "added",
+        "additions": 0,
+        "deletions": 0
+      },
+      "findings": [],
+      "analyzedAt": "2026-06-08T06:11:04.227Z"
+    },
+    {
+      "file": {
+        "filename": "backend/internal/handler/auth.go",
+        "status": "added",
+        "additions": 0,
+        "deletions": 0
+      },
+      "findings": [],
+      "analyzedAt": "2026-06-08T06:11:08.334Z"
+    },
+    {
+      "file": {
+        "filename": "backend/internal/handler/health.go",
+        "status": "added",
+        "additions": 0,
+        "deletions": 0
+      },
+      "findings": [],
+      "analyzedAt": "2026-06-08T06:11:19.610Z"
+    },
+    {
+      "file": {
+        "filename": "backend/internal/handler/helpers.go",
+        "status": "added",
+        "additions": 0,
+        "deletions": 0
+      },
+      "findings": [],
+      "analyzedAt": "2026-06-08T06:11:24.460Z"
+    },
+    {
+      "file": {
+        "filename": "backend/internal/handler/project.go",
+        "status": "added",
+        "additions": 0,
+        "deletions": 0
+      },
+      "findings": [],
+      "analyzedAt": "2026-06-08T06:11:36.933Z"
+    },
+    {
+      "file": {
+        "filename": "backend/internal/handler/task.go",
+        "status": "added",
+        "additions": 0,
+        "deletions": 0
+      },
+      "findings": [],
+      "analyzedAt": "2026-06-08T06:11:41.916Z"
+    },
+    {
+      "file": {
+        "filename": "backend/internal/middleware/auth.go",
+        "status": "added",
+        "additions": 0,
+        "deletions": 0
+      },
+      "findings": [],
+      "analyzedAt": "2026-06-08T06:11:53.658Z"
+    },
+    {
+      "file": {
+        "filename": "backend/internal/middleware/cors.go",
+        "status": "added",
+        "additions": 0,
+        "deletions": 0
+      },
+      "findings": [],
+      "analyzedAt": "2026-06-08T06:12:06.060Z"
+    },
+    {
+      "file": {
+        "filename": "backend/internal/middleware/logging.go",
+        "status": "added",
+        "additions": 0,
+        "deletions": 0
+      },
+      "findings": [],
+      "analyzedAt": "2026-06-08T06:12:11.293Z"
+    },
+    {
+      "file": {
+        "filename": "backend/internal/middleware/ratelimit.go",
+        "status": "added",
+        "additions": 0,
+        "deletions": 0
+      },
+      "findings": [],
+      "analyzedAt": "2026-06-08T06:12:23.598Z"
+    }
+  ],
+  "startedAt": "2026-06-08T06:10:49.640Z",
+  "updatedAt": "2026-06-08T06:12:23.598Z"
+}

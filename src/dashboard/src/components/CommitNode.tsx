@@ -107,8 +107,9 @@ export function CommitNode({ id, position, file }: CommitNodeProps) {
     }
   });
 
-  // Extract file basename for cleaner display
-  const fileBasename = file.name.split('/').pop() || file.name;
+  // Extract file basename for cleaner display safely
+  const nameStr = file?.name || 'unknown';
+  const fileBasename = nameStr.split('/').pop() || nameStr;
 
   return (
     <group position={position}>
@@ -166,15 +167,15 @@ export function CommitNode({ id, position, file }: CommitNodeProps) {
       </Text>
 
       {/* 3D HTML Tooltip when Hovered or Active */}
-      {(hovered || isActive) && (
+      {(hovered || isActive) && file && (
         <Html distanceFactor={8} position={[0, -0.9, 0]} center pointerEvents="none">
           <div className="flex flex-col bg-slate-950/95 border border-slate-800 p-2.5 rounded-lg shadow-2xl backdrop-blur-md min-w-[200px] text-xs transition-all duration-300 transform scale-95 opacity-100">
-            <div className="font-mono font-semibold text-slate-200 truncate">{file.name}</div>
+            <div className="font-mono font-semibold text-slate-200 truncate">{file.name || 'unknown'}</div>
             <div className="flex items-center gap-1.5 mt-1">
               <span
                 className={`w-1.5 h-1.5 rounded-full ${
                   file.status === 'complete'
-                    ? file.findings.length > 0
+                    ? (file.findings || []).length > 0
                       ? 'bg-orange-500'
                       : 'bg-green-500'
                     : 'bg-blue-500 animate-pulse'
@@ -182,11 +183,11 @@ export function CommitNode({ id, position, file }: CommitNodeProps) {
               />
               <span className="text-slate-400 capitalize text-[10px]">
                 {file.status === 'complete'
-                  ? `${file.findings.length} findings`
-                  : file.status}
+                  ? `${(file.findings || []).length} findings`
+                  : file.status || 'queued'}
               </span>
             </div>
-            {file.findings.length > 0 && file.status === 'complete' && (
+            {file.findings && file.findings.length > 0 && file.status === 'complete' && (
               <div className="mt-1.5 border-t border-slate-800/80 pt-1 text-[10px] text-red-400 font-medium">
                 ⚠️ Critical Issue Detected
               </div>

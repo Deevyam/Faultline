@@ -1,0 +1,51 @@
+name: faultline-virtual-models
+type: provider-account/virtual-model
+integrations:
+
+  # ── Phase 1: Fast scan model (Llama 3 70B with fallbacks)
+  - name: phase1-scan
+    type: integration/model/virtual
+    slug: phase1-scan          # use "phase1-scan" directly in .env
+    model_types:
+      - chat
+    routing_config:
+      type: priority-based-routing
+      load_balance_targets:
+        - target: aws-bedrock/meta.llama3-70b-instruct-v1-0
+          priority: 0
+          retry_config:
+            attempts: 3
+            delay: 100
+            on_status_codes: ["429", "403", "500", "503"]
+          fallback_status_codes: ["429", "403", "500", "503"]
+
+  # ── Phase 2: Reasoning with automatic fallback chain
+  - name: phase2-reasoning
+    type: integration/model/virtual
+    slug: phase2-reasoning     # use "phase2-reasoning" directly in .env
+    model_types:
+      - chat
+    routing_config:
+      type: priority-based-routing
+      load_balance_targets:
+        - target: aws-bedrock/us.anthropic.claude-sonnet-4-6  # 1st attempt
+          priority: 0
+          retry_config:
+            attempts: 3
+            delay: 100
+            on_status_codes: ["429", "403", "500", "503"]
+          fallback_status_codes: ["429", "403", "500", "503"]
+        - target: aws-bedrock/us.deepseek.r1-v1-0             # fallback #1
+          priority: 1
+          retry_config:
+            attempts: 3
+            delay: 100
+            on_status_codes: ["429", "403", "500", "503"]
+          fallback_status_codes: ["429", "403", "500", "503"]
+        - target: aws-bedrock/meta.llama3-70b-instruct-v1-0   # fallback #2
+          priority: 2
+          retry_config:
+            attempts: 3
+            delay: 100
+            on_status_codes: ["429", "403", "500", "503"]
+          fallback_status_codes: ["429", "403", "500", "503"]

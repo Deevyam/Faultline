@@ -40,7 +40,7 @@ export default function App() {
   // Timer runner
   const startTimer = (start: number) => {
     if (timerRef.current) clearInterval(timerRef.current);
-    
+
     timerRef.current = setInterval(() => {
       const elapsed = Date.now() - start;
       const totalSec = Math.floor(elapsed / 1000);
@@ -146,7 +146,7 @@ export default function App() {
       { icon: '✅', text: 'Code fix validated: syntax check passed for charge.py suggestion', delay: 6000 },
       { icon: '🛡️', text: 'PII redacted: email address in handlers.ts error log', delay: 9000 },
       { icon: '✅', text: 'Fix validated: import statement resolved for retry decorator', delay: 12000 },
-      { icon: '🔄', text: 'Model fallback: Claude 3.7 → Llama 70B (rate limit hit)', delay: 15000 },
+      { icon: '🔄', text: 'Model fallback: claude 4.5 → Llama 70B (rate limit hit)', delay: 15000 },
       { icon: '🛡️', text: 'Secret redacted: Stripe secret key in stripe.ts', delay: 17000 },
       { icon: '✅', text: 'Code fix validated: connection pool params type-checked', delay: 19000 },
       { icon: '🛡️', text: 'Injection blocked: potential prompt injection in PR description', delay: 21000 },
@@ -184,6 +184,95 @@ export default function App() {
     resetSimulation();
     setMode('live');
   };
+
+  // SSE Event Stream Listener
+  useEffect(() => {
+    const sseUrl = window.location.port !== '3000'
+      ? 'http://localhost:3000/api/events'
+      : '/api/events';
+
+    const eventSource = new EventSource(sseUrl);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const store = useDashboardStore.getState();
+
+        if (data.type === 'init') {
+          if (data.state.running) {
+            clearAllScheduledTasks();
+            store.setMode('live');
+            store.updateStateFromLive(data.state);
+            if (data.state.startTime) {
+              startTimer(data.state.startTime);
+            } else {
+              startTimer(Date.now());
+            }
+          }
+        } else if (data.type === 'start') {
+          clearAllScheduledTasks();
+          store.startLiveRun(
+            data.repo,
+            data.prNumber,
+            data.prTitle,
+            data.files,
+            data.phase1Model,
+            data.phase2Model
+          );
+          startTimer(Date.now());
+        } else if (data.type === 'file_start') {
+          store.updateFile(data.fileIndex, {
+            status: 'scanning',
+            phase: data.phase || `Phase 1 - Fast scanning with ${store.phase1Model}...`,
+            progress: 0,
+            findings: []
+          });
+          store.incrementLlamaCalls();
+        } else if (data.type === 'file_progress') {
+          store.updateFile(data.fileIndex, {
+            progress: data.progress,
+            phase: data.phase || 'Scanning...'
+          });
+        } else if (data.type === 'file_complete') {
+          const hasFindings = data.findings.length > 0;
+          const completionMessage = hasFindings
+            ? `Complete — ${data.findings.length} issue${data.findings.length > 1 ? 's' : ''} detected`
+            : 'Complete — No issues found';
+
+          store.updateFile(data.fileIndex, {
+            status: data.status || 'complete',
+            phase: completionMessage,
+            progress: 100,
+            findings: data.findings
+          });
+
+          if (hasFindings) {
+            store.incrementClaudeCalls();
+          }
+        } else if (data.type === 'complete') {
+          store.setRunning(false);
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+          store.addGuardrailEvent(
+            '✅',
+            `Analysis complete: ${data.summary.totalFindings} findings, ${data.summary.criticalFindings} critical`
+          );
+        }
+      } catch (err) {
+        console.error('Error parsing SSE event:', err);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('SSE connection error:', error);
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, []);
 
   // Run demo on load
   useEffect(() => {

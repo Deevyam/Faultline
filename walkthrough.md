@@ -2,7 +2,12 @@
 
 ## What Was Built
 
-**Faultline** is a resilience-first PR review agent that hunts for the class of bug that causes production outages — missing timeouts, silent exception swallows, non-idempotent writes, and 5 other anti-patterns that pass every linter and every code review.
+**Faultline** is a resilience-first PR/Repository review agent that hunts for the class of bug that causes production outages — missing timeouts, silent exception swallows, non-idempotent writes, and 5 other anti-patterns that pass every linter and every code review.
+
+### Key Capabilities
+- **Stateless MCP Gateway Client**: Added a custom `StatelessMcpClient` in `src/mcp/client.ts` to connect to TrueFoundry MCP Gateway using stateless HTTP POST JSON-RPC requests, resolving SSE/GET transport restrictions (such as `405 Method Not Allowed`).
+- **Repository Scan Fallback**: Added support for analyzing whole repositories recursively (up to 50 files, excluding standard folders like `node_modules`, `.git`, `.github`, etc.) using the `get_file_contents` tool or REST APIs when no open PR is found.
+- **Repository URL Support**: Support for repo URLs (e.g. `https://github.com/owner/repo`) in both the CLI (`npm run self-review -- URL`) and dashboard "Live Feed" input, displaying as a "Repository Scan" in the UI.
 
 ---
 
@@ -41,7 +46,7 @@ graph TB
     end
 
     subgraph Phase2["Phase 2 — Deep Reasoning"]
-        P2["Claude 3.7 Sonnet via Bedrock"]
+        P2["claude 4.5 Sonnet via Bedrock"]
         FB["Fallback: Llama 70B"]
     end
 
@@ -163,7 +168,7 @@ The codebase is fully built and ready. Here's what you need to wire up:
 ### 1. TrueFoundry AI Gateway
 - Create account at truefoundry.com → create workspace → AI Gateway
 - Add AWS Bedrock provider with access key + secret
-- Enable: Claude 3.7 Sonnet, Llama 3 70B, Llama 3 8B
+- Enable: claude 4.5 Sonnet, Llama 3 70B, Llama 3 8B
 - Create virtual keys: `phase1-scan` and `phase2-reasoning`
 - Upload `config/gateway.yaml`
 

@@ -83,7 +83,7 @@ graph TB
 
     subgraph Phase2["Phase 2 — Deep Reasoning"]
         DR[Deep Reasoner]
-        CL[Claude 3.7 Sonnet via Bedrock]
+        CL[claude 4.5 Sonnet via Bedrock]
         CF[Cross-File Analyzer]
     end
 
@@ -152,7 +152,7 @@ Faultline uses a **two-phase approach** to balance speed and depth:
 - **Output:** Candidate list of suspicious code regions
 
 ### Phase 2 — Deep Reasoning (< 30 seconds)
-- **Model:** Anthropic Claude 3.7 Sonnet via AWS Bedrock (through TrueFoundry AI Gateway)
+- **Model:** Anthropic claude 4.5 Sonnet via AWS Bedrock (through TrueFoundry AI Gateway)
 - **Purpose:** Cross-file data flow analysis, business logic understanding, nuanced judgment
 - **Fallback:** Llama 70B if Claude is rate-limited (configured via AI Gateway)
 - **Cost:** ~$0.01 per file
@@ -168,7 +168,7 @@ Faultline uses a **two-phase approach** to balance speed and depth:
 
 - **Node.js** ≥ 20.0.0
 - **TrueFoundry account** with AI Gateway access
-- **AWS Bedrock** access (Claude 3.7 Sonnet + Llama 3 models enabled)
+- **AWS Bedrock** access (claude 4.5 Sonnet + Llama 3 models enabled)
 - **GitHub App** or personal access token
 
 ### 1. Clone & Install

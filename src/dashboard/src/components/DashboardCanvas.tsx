@@ -75,6 +75,7 @@ function Constellation() {
   return (
     <group ref={groupRef}>
       {files.map((file, index) => {
+        if (!file || !file.name) return null;
         // Arrange nodes in a circular orbital constellation
         const angle = (index / files.length) * Math.PI * 2;
         const radius = 4;

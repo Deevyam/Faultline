@@ -51,6 +51,7 @@ export function ConnectionLines() {
     const centerPos = new THREE.Vector3(0, 0, 0);
 
     files.forEach((file, index) => {
+      if (!file || !file.name) return;
       // Current node coordinates
       const angle = (index / files.length) * Math.PI * 2;
       const x = Math.cos(angle) * 4;
